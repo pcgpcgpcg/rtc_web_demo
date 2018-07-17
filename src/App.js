@@ -9,6 +9,8 @@ import CardActions from '@material-ui/core/CardActions';
 import CardContent from '@material-ui/core/CardContent';
 import CardMedia from '@material-ui/core/CardMedia';
 import Grid from '@material-ui/core/Grid';
+import Icon from '@material-ui/core/Icon';
+import IconButton from '@material-ui/core/IconButton';
 
 class App extends Component {
 
@@ -211,9 +213,9 @@ class App extends Component {
                   <Card className="card-local">
                       <video ref={this.localVideo} id="localVideo" autoPlay="true"/>
                       <CardActions>
-                          <Button size="small" color="primary" variant="contained">
-                              Mute
-                          </Button>
+                      <IconButton color="secondary" aria-label="Add an alarm">
+                          <Icon>alarm</Icon>
+                      </IconButton>
                           <Button size="small" color="secondary" variant="contained">
                               Audio Only
                           </Button>
