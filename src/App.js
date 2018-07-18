@@ -11,6 +11,7 @@ import CardMedia from '@material-ui/core/CardMedia';
 import Grid from '@material-ui/core/Grid';
 import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
+import {VideoIcon,FacebookIcon} from './img/svgIcons'
 
 class App extends Component {
 
@@ -213,9 +214,9 @@ class App extends Component {
                   <Card className="card-local">
                       <video ref={this.localVideo} id="localVideo" autoPlay="true"/>
                       <CardActions>
-                      <IconButton color="secondary" aria-label="Add an alarm">
-                          <Icon>alarm</Icon>
-                      </IconButton>
+                          <IconButton color="primary" aria-label="Add an alarm">
+                              <VideoIcon></VideoIcon>
+                          </IconButton>
                           <Button size="small" color="secondary" variant="contained">
                               Audio Only
                           </Button>
