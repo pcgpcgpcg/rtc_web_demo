@@ -3,6 +3,7 @@ import logo from './logo.svg';
 import './App.css';
 import {Janus} from 'janusjs-sdk'
 import Button from '@material-ui/core/Button'
+import CssBaseline from '@material-ui/core/CssBaseline';
 import { withStyles } from '@material-ui/core/styles';
 import Card from '@material-ui/core/Card';
 import CardActions from '@material-ui/core/CardActions';
@@ -11,7 +12,7 @@ import CardMedia from '@material-ui/core/CardMedia';
 import Grid from '@material-ui/core/Grid';
 import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
-import {VideoIcon,FacebookIcon} from './img/svgIcons'
+import {VideoIcon,VideoOffIcon,AudioIcon,AudioOffIcon} from './img/svgIcons'
 
 class App extends Component {
 
@@ -19,6 +20,8 @@ class App extends Component {
         super(props);
         this.state={
             localVideoSrc:null,
+            videoEnable:true,
+            audioEnable:true,
         }
 
         // create a ref to store the video DOM element
@@ -34,12 +37,22 @@ class App extends Component {
         this.echotest = null;
 
         this.handleStart=this.handleStart.bind(this);
+        this.handleVideoOn=this.handleVideoOn.bind(this);
+        this.handleAudioOn=this.handleAudioOn.bind(this);
     }
 
     componentDidMount() {
         Janus.init({debug: "all", callback: function() {
 
             }});
+    }
+
+    handleVideoOn(){
+         this.setState({videoEnable: !this.state.videoEnable});
+    }
+
+    handleAudioOn(){
+        this.setState({audioEnable: !this.state.audioEnable})
     }
 
 
@@ -201,38 +214,47 @@ class App extends Component {
 
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
-          <h1 className="App-title">Janus Echo Test</h1>
-        </header>
-          <Button color="primary" variant="contained" onClick={this.handleStart}>
-              Start
-          </Button>
+      <div style={{ padding: 20 }}>
+          <CssBaseline />
+          <Grid container style={styles.root} xs={12} spacing={6} justify="center" zeroMinWidth={0}>
+              <Grid item xs={12}>
+              <header >
+                  <h1 className="App-title">Janus Echo Test</h1>
+              </header>
+              </Grid>
+              <Grid item xs={12}>
+                  <Button color="primary" variant="contained" onClick={this.handleStart}>
+                      Start
+                  </Button>
+              </Grid>
+          </Grid>
 
-          <Grid container spacing={24}>
-              <Grid item xs={6}>
-                  <Card className="card-local">
-                      <video ref={this.localVideo} id="localVideo" autoPlay="true"/>
-                      <CardActions>
-                          <IconButton color="primary" aria-label="Add an alarm">
-                              <VideoIcon></VideoIcon>
+
+
+          <Grid container xs={12} spacing={6} justify="flex-end"  alignItems="flex-end" direction="row">
+              <Grid item xs={6} >
+                  <Card key='1' style={styles.card}>
+                      <video style={styles.video} ref={this.localVideo} id="localVideo" autoPlay="true"/>
+                      <CardActions style={styles.button}>
+                          <IconButton onClick={this.handleVideoOn} color="primary" aria-label="Add an alarm">
+                              {this.state.videoEnable?<VideoIcon></VideoIcon>:<VideoOffIcon></VideoOffIcon>}
                           </IconButton>
-                          <Button size="small" color="secondary" variant="contained">
-                              Audio Only
-                          </Button>
+                          <IconButton onClick={this.handleAudioOn} color="secondary" aria-label="Add an alarm2">
+                          {this.state.audioEnable?<AudioIcon></AudioIcon>:<AudioOffIcon></AudioOffIcon>}
+                          </IconButton>
                       </CardActions>
                   </Card>
               </Grid>
               <Grid item xs={6}>
-                  <Card className="card-remote">
-                      <video ref={this.remoteVideo} id="remoteVideo" autoPlay="true"/>
-                      <CardActions>
-                          <Button size="small" color="primary" variant="contained">
-                              Mute
-                          </Button>
-                          <Button size="small" color="secondary" variant="contained">
-                              Audio Only
-                          </Button>
+                  <Card key='2' style={styles.card}>
+                      <video style={styles.video} ref={this.remoteVideo} id="remoteVideo" autoPlay="true"/>
+                      <CardActions style={styles.button}>
+                          <IconButton onClick={this.handleVideoOn} color="primary" aria-label="Add an alarm">
+                              {this.state.videoEnable?<VideoIcon></VideoIcon>:<VideoOffIcon></VideoOffIcon>}
+                          </IconButton>
+                          <IconButton onClick={this.handleAudioOn} color="secondary" aria-label="Add an alarm2">
+                              {this.state.audioEnable?<AudioIcon></AudioIcon>:<AudioOffIcon></AudioOffIcon>}
+                          </IconButton>
                       </CardActions>
                   </Card>
               </Grid>
@@ -242,5 +264,24 @@ class App extends Component {
     );
   }
 }
+
+const styles = {
+    root: {
+        flexGrow: 1,
+        textAlign: 'center',
+    },
+    card: {
+        maxWidth: 640,
+    },
+    video: {
+        paddingTop: 5, // 16:9
+        width:480,
+        height:480,
+    },
+
+    button: {
+        paddingBottom: 5, // 16:9
+    },
+};
 
 export default App;
