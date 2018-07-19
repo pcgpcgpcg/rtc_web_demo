@@ -13,6 +13,7 @@ import Grid from '@material-ui/core/Grid';
 import Icon from '@material-ui/core/Icon';
 import IconButton from '@material-ui/core/IconButton';
 import {VideoIcon,VideoOffIcon,AudioIcon,AudioOffIcon} from './img/svgIcons'
+import NativeSelect from '@material-ui/core/NativeSelect';
 
 class App extends Component {
 
@@ -22,6 +23,8 @@ class App extends Component {
             localVideoSrc:null,
             videoEnable:true,
             audioEnable:true,
+            bitrateValue:100,
+            startEchoTest:false,
         }
 
         // create a ref to store the video DOM element
@@ -35,10 +38,15 @@ class App extends Component {
         this.server = "https://39.106.100.180:8089/janus";
         this.opaqueId = "echotest-"+Janus.randomString(12);
         this.echotest = null;
+        this.janus=null;
+        this.bitrateTimer=null;
+        this.bitrateNow=null;
+        this.WidthAndHeight="";
 
         this.handleStart=this.handleStart.bind(this);
         this.handleVideoOn=this.handleVideoOn.bind(this);
         this.handleAudioOn=this.handleAudioOn.bind(this);
+        this.handleSelectChange=this.handleSelectChange.bind(this);
     }
 
     componentDidMount() {
@@ -47,25 +55,49 @@ class App extends Component {
             }});
     }
 
+    componentWillUnmount(){
+        if(this.bitrateTimer&&this.janus){
+           clearInterval(this.bitrateTimer);
+           this.janus.destroy();
+        }
+    }
+
     handleVideoOn(){
-         this.setState({videoEnable: !this.state.videoEnable});
+        this.echotest.send({"message": { "video": !this.state.videoEnable }});
+        this.setState({videoEnable: !this.state.videoEnable});
     }
 
     handleAudioOn(){
-        this.setState({audioEnable: !this.state.audioEnable})
+        this.echotest.send({"message": { "audio": !this.state.audioEnable }});
+        this.setState({audioEnable: !this.state.audioEnable});
     }
+
+    handleSelectChange = name => event => {
+        this.setState({ [name]: event.target.value });
+        this.echotest.send({"message": { "bitrate": event.target.value }});
+    };
 
 
 
     handleStart(){
+        if(this.state.startEchoTest){
+            clearInterval(this.bitrateTimer);
+            this.janus.destroy();
+            this.bitrateTimer=null;
+            this.janus=null;
+            this.setState({startEchoTest:!this.state.startEchoTest});
+            return;
+        }
+
+        this.setState({startEchoTest:!this.state.startEchoTest});
+
         if(!Janus.isWebrtcSupported()) {
             alert("No WebRTC support... ");
             return;
         }
-
         var that=this;
         // Create session
-        var janus = new Janus(
+        this.janus = new Janus(
             {
                 server: this.server,
                 // No "iceServers" is provided, meaning janus.js will use a default STUN server
@@ -79,7 +111,7 @@ class App extends Component {
                 //		apisecret: "serversecret",
                 success: function() {
                     // Attach to echo test plugin
-                    janus.attach(
+                    that.janus.attach(
                         {
                             plugin: "janus.plugin.echotest",
                             opaqueId: this.opaqueId,
@@ -188,6 +220,18 @@ class App extends Component {
                                     Janus.webRTCAdapter.browserDetails.browser === "safari") {
 
                                 }
+                                that.bitrateTimer = setInterval(function() {
+                                    // Display updated bitrate, if supported
+                                    var bitrate = that.echotest.getBitrate();
+                                    that.setState({bitrateNow:bitrate});
+                                    //~ Janus.debug("Current bitrate is " + echotest.getBitrate());
+                                    // Check if the resolution changed too
+                                    var width = that.remoteVideo.current.videoWidth;
+                                    var height = that.remoteVideo.current.videoHeight;
+                                    if(width > 0 && height > 0){
+                                        that.setState({WidthAndHeight:width+'x'+height});
+                                    }
+                                }, 1000);
                             },
                             ondataopen: function(data) {
                                 Janus.log("The DataChannel is available!");
@@ -224,7 +268,7 @@ class App extends Component {
               </Grid>
               <Grid item xs={12}>
                   <Button color="primary" variant="contained" onClick={this.handleStart}>
-                      Start
+                      {this.state.startEchoTest?'stop':'start'}
                   </Button>
               </Grid>
           </Grid>
@@ -242,6 +286,20 @@ class App extends Component {
                           <IconButton onClick={this.handleAudioOn} color="secondary" aria-label="Add an alarm2">
                           {this.state.audioEnable?<AudioIcon></AudioIcon>:<AudioOffIcon></AudioOffIcon>}
                           </IconButton>
+                          <NativeSelect
+                              value={this.state.bitrateValue}
+                              onChange={this.handleSelectChange('bitrateValue')}
+                              name="bitrate"
+                              style={styles.selectEmpty}
+                          >
+                              <option value={0}>No limit</option>
+                              <option value={128}>Cap to 128kbit</option>
+                              <option value={256}>Cap to 256kbit</option>
+                              <option value={512}>Cap to 512kbit</option>
+                              <option value={1025}>Cap to 1mbit</option>
+                              <option value={1500}>Cap to 1.5mbit</option>
+                              <option value={2000}>Cap to 2mbit</option>
+                          </NativeSelect>
                       </CardActions>
                   </Card>
               </Grid>
@@ -255,6 +313,8 @@ class App extends Component {
                           <IconButton onClick={this.handleAudioOn} color="secondary" aria-label="Add an alarm2">
                               {this.state.audioEnable?<AudioIcon></AudioIcon>:<AudioOffIcon></AudioOffIcon>}
                           </IconButton>
+                          <label>{this.state.WidthAndHeight}</label>
+                          <label>{this.state.bitrateNow}</label>
                       </CardActions>
                   </Card>
               </Grid>
@@ -281,6 +341,10 @@ const styles = {
 
     button: {
         paddingBottom: 5, // 16:9
+    },
+
+    selectEmpty: {
+        marginTop:  2,
     },
 };
 
