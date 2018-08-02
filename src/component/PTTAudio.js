@@ -1,11 +1,12 @@
 import React, { Component } from 'react';
 import {Janus} from 'janusjs-sdk'
+import Button from "@material-ui/core/Button";
 
 class PTTAudio extends Component{
     constructor(props){
         super(props);
         this.state={
-
+            audioEnabled:false,
         }
         this.remoteAudio=React.createRef();
         this.bWebrtcSupport=false;
@@ -17,7 +18,9 @@ class PTTAudio extends Component{
         this.myusername = null;
         this.myid = null;
         this.webrtcUp = false;
-        this.audioEnabled = true;
+        //this.audioEnabled = true;
+        this.handleButtonPress=this.handleButtonPress.bind(this);
+        this.handleButtonRelease=this.handleButtonRelease.bind(this);
     }
 
     componentDidMount() {
@@ -53,7 +56,7 @@ class PTTAudio extends Component{
                                     },
                                     onmessage: function(msg, jsep) {
                                         Janus.debug(" ::: Got a message :::");
-                                        Janus.debug(msg);
+                                        Janus.log(msg);
                                         var event = msg["audiobridge"];
                                         Janus.debug("Event: " + event);
                                         if(event != undefined && event != null) {
@@ -68,9 +71,9 @@ class PTTAudio extends Component{
                                                         {
                                                             media: { video: false},	// This is an audio only room
                                                             success: function(jsep) {
-                                                                Janus.debug("Got SDP!");
-                                                                Janus.debug(jsep);
-                                                                var publish = { "request": "configure", "muted": false };
+                                                                Janus.log("Got SDP!");
+                                                                Janus.log(jsep);
+                                                                var publish = { "request": "configure", "muted": !that.state.audioEnabled };
                                                                 that.mixertest.send({"message": publish, "jsep": jsep});
                                                             },
                                                             error: function(error) {
@@ -88,7 +91,7 @@ class PTTAudio extends Component{
                                                         var display = list[f]["display"];
                                                         var setup = list[f]["setup"];
                                                         var muted = list[f]["muted"];
-                                                        Janus.debug("  >> [" + id + "] " + display + " (setup=" + setup + ", muted=" + muted + ")");
+                                                        Janus.log("  >> [" + id + "] " + display + " (setup=" + setup + ", muted=" + muted + ")");
                                                     }
                                                 }
                                             }  else if(event === "destroyed") {
@@ -134,8 +137,6 @@ class PTTAudio extends Component{
                                     },
                                     onremotestream: function(stream) {
                                         Janus.attachMediaStream(that.remoteAudio.current, stream);
-                                        // Mute button
-                                        that.audioenabled = true;
                                     },
                                     oncleanup: function() {
                                         that.webrtcUp = false;
@@ -153,9 +154,14 @@ class PTTAudio extends Component{
             }});
     }
 
-    setAudioEnable(bEnable){
-        this.audioEnabled = bEnable;
-        this.mixertest.send({message: { "request": "configure", "muted": !bEnable }});
+    handleButtonPress () {
+        this.mixertest.send({message: { "request": "configure", "muted": false }});
+        this.setState({audioEnable:true});
+    }
+
+    handleButtonRelease () {
+        this.mixertest.send({message: { "request": "configure", "muted": true }});
+        this.setState({audioEnable:false});
     }
 
     componentWillUnmount(){
@@ -166,7 +172,13 @@ class PTTAudio extends Component{
 
     render(){
         return (
-           <audio ref={this.remoteAudio} id="remoteAudio"></audio>
+            <div>
+            <Button color="primary" variant="contained" onTouchStart={this.handleButtonPress}
+                    onTouchEnd={this.handleButtonRelease} onMouseDown={this.handleButtonPress} onMouseUp={this.handleButtonRelease}>
+                {this.state.audioEnable?'release':'push'}
+            </Button>
+           <audio ref={this.remoteAudio} id="remoteAudio" autoPlay="true"></audio>
+            </div>
         );
     }
 }
