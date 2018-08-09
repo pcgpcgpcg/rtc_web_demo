@@ -57,7 +57,12 @@ class EchoTest extends Component {
 
     componentWillUnmount(){
         if(this.bitrateTimer&&this.janus){
-            clearInterval(this.bitrateTimer);
+            if(this.reconnectTimer){
+                clearInterval(this.reconnectTimer);
+            }
+            if(this.bitrateTimer){
+                clearInterval(this.bitrateTimer);
+            }
             this.janus.destroy();
         }
     }
