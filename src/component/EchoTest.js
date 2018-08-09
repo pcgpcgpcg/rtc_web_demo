@@ -22,7 +22,7 @@ class EchoTest extends Component {
             videoEnable:true,
             audioEnable:true,
             bitrateValue:100,
-            startEchoTest:false,
+            bStartEchoTestButton:false,
         }
 
         // create a ref to store the video DOM element
@@ -40,6 +40,8 @@ class EchoTest extends Component {
         this.bitrateTimer=null;
         this.bitrateNow=null;
         this.WidthAndHeight="";
+        this.bStartEchoTest=false;
+        this.reconnectTimer=null;//断线重连机制
 
         this.handleStart=this.handleStart.bind(this);
         this.handleVideoOn=this.handleVideoOn.bind(this);
@@ -78,16 +80,18 @@ class EchoTest extends Component {
 
 
     handleStart(){
-        if(this.state.startEchoTest){
+        if(this.bStartEchoTest){
             clearInterval(this.bitrateTimer);
             this.janus.destroy();
             this.bitrateTimer=null;
             this.janus=null;
-            this.setState({startEchoTest:!this.state.startEchoTest});
+            this.bStartEchoTest=false;
+            this.setState({bStartEchoTestButton:!this.state.bStartEchoTestButton});
             return;
         }
 
-        this.setState({startEchoTest:!this.state.startEchoTest});
+        this.bStartEchoTest=true;
+        this.setState({bStartEchoTestButton:!this.state.bStartEchoTestButton});
 
         if(!Janus.isWebrtcSupported()) {
             alert("No WebRTC support... ");
@@ -146,6 +150,18 @@ class EchoTest extends Component {
                             },
                             iceState: function(state) {
                                 Janus.log("ICE state changed to " + state);
+                                if(state=='completed'){
+                                    if(that.reconnectTimer){
+                                        clearInterval(that.reconnectTimer);
+                                        that.reconnectTimer=null;
+                                    }
+                                }
+                                if(state=='failed'){
+                                    that.reconnectTimer = setInterval(function() {
+                                        that.bStartEchoTest=false;
+                                        that.handleStart();
+                                    }, 5000);
+                                }
                             },
                             mediaState: function(medium, on) {
                                 Janus.log("Janus " + (on ? "started" : "stopped") + " receiving our " + medium);
@@ -266,7 +282,7 @@ class EchoTest extends Component {
                     </Grid>
                     <Grid item xs={12}>
                         <Button color="primary" variant="contained" onClick={this.handleStart}>
-                            {this.state.startEchoTest?'stop':'start'}
+                            {this.state.bStartEchoTestButton?'stop':'start'}
                         </Button>
                     </Grid>
                 </Grid>
