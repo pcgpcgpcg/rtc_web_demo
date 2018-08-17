@@ -41,7 +41,7 @@ class App extends Component {
   render() {
     return (
       <div style={{ padding: 20 }}>
-          <EchoTest id="EchoTest1"></EchoTest>
+          <PTTAudio id="PTTTest1"></PTTAudio>
           {/*<EchoTest id="EchoTest1"></EchoTest>*/}
       </div>
     );

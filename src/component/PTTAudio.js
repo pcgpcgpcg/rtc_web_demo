@@ -1,6 +1,9 @@
 import React, { Component } from 'react';
 import {Janus} from 'janusjs-sdk'
 import Button from "@material-ui/core/Button";
+import PropTypes from "prop-types";
+import {withStyles} from "@material-ui/core/styles";
+import {AudioIcon} from "../img/svgIcons";
 
 class PTTAudio extends Component{
     constructor(props){
@@ -47,6 +50,14 @@ class PTTAudio extends Component{
                                     success: function(pluginHandle) {
                                         that.mixertest = pluginHandle;
                                         Janus.log("Plugin attached! (" + that.mixertest.getPlugin() + ", id=" + that.mixertest.getId() + ")");
+                                        /*在此处创建房间*/
+                                        //先判断房间是否存在
+
+                                        //如果存在，则直接加入
+                                        //不存在，则创建
+                                        var create_room={"request":"create","room": "group111", "permanent": 'true',
+                                            "description":"groupname1", "is_private": 'false'};
+                                        that.mixertest.send({"message": create_room});
                                         //加入房间
                                         var register = { "request": "join", "room": that.myroom, "display": 'pcg' };
                                         that.mixertest.send({"message": register});
@@ -171,16 +182,40 @@ class PTTAudio extends Component{
     }
 
     render(){
+        const fab= {
+            color: 'secondary',
+            className: this.props.classes.fab,
+            icon: <AudioIcon />,
+        };
         return (
             <div>
-            <Button color="primary" variant="contained" onTouchStart={this.handleButtonPress}
-                    onTouchEnd={this.handleButtonRelease} onMouseDown={this.handleButtonPress} onMouseUp={this.handleButtonRelease}>
-                {this.state.audioEnable?'release':'push'}
-            </Button>
+             <Button variant="fab" className={fab.className} color={fab.color} onTouchStart={this.handleButtonPress}
+                        onTouchEnd={this.handleButtonRelease} onMouseDown={this.handleButtonPress} onMouseUp={this.handleButtonRelease}>
+                    {fab.icon}
+             </Button>
            <audio ref={this.remoteAudio} id="remoteAudio" autoPlay="true"></audio>
             </div>
         );
     }
 }
 
-export default PTTAudio;
+const styles = theme => ({
+    root: {
+        backgroundColor: theme.palette.background.paper,
+        width: 500,
+        position: 'relative',
+        minHeight: 200,
+    },
+    fab: {
+        position: 'absolute',
+        bottom: theme.spacing.unit * 7,
+        right: theme.spacing.unit * 2,
+    },
+});
+
+PTTAudio.propTypes = {
+    classes: PropTypes.object.isRequired,
+    theme: PropTypes.object.isRequired,
+};
+
+export default withStyles(styles, { withTheme: true })(PTTAudio);
