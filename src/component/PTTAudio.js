@@ -55,8 +55,8 @@ class PTTAudio extends Component{
 
                                         //如果存在，则直接加入
                                         //不存在，则创建
-                                        var create_room={"request":"create","room": "group111", "permanent": 'true',
-                                            "description":"groupname1", "is_private": 'false'};
+                                        var create_room={"request":"create","room": 1234567, "permanent": true,
+                                            "description":"groupname1", "is_private": false};
                                         that.mixertest.send({"message": create_room});
                                         //加入房间
                                         var register = { "request": "join", "room": that.myroom, "display": 'pcg' };
@@ -68,6 +68,8 @@ class PTTAudio extends Component{
                                     onmessage: function(msg, jsep) {
                                         Janus.debug(" ::: Got a message :::");
                                         Janus.log(msg);
+                                        console.log(" ::: Got a message :::");
+                                        console.log(msg);
                                         var event = msg["audiobridge"];
                                         Janus.debug("Event: " + event);
                                         if(event != undefined && event != null) {
