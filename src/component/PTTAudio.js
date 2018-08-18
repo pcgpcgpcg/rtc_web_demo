@@ -55,12 +55,22 @@ class PTTAudio extends Component{
 
                                         //如果存在，则直接加入
                                         //不存在，则创建
-                                        var create_room={"request":"create","room": 1234567, "permanent": true,
+                                        that.myroom=1234567;
+                                        var create_room={"request":"create","room": that.myroom, "permanent": false,
                                             "description":"groupname1", "is_private": false};
-                                        that.mixertest.send({"message": create_room});
-                                        //加入房间
-                                        var register = { "request": "join", "room": that.myroom, "display": 'pcg' };
-                                        that.mixertest.send({"message": register});
+                                        that.mixertest.send({"message": create_room,
+                                            success:function(data){
+                                                if(data === undefined || data === null){
+                                                    console.log("create_room return null");
+                                                }
+                                                //TODO fix event not equal room_already_exist
+                                                else if(data["audiobridge"]==="created"||data["audiobridge"]==="event"){
+                                                    //创建房间成功或者房间本来就存在，请加入
+                                                    //加入房间
+                                                    var register = { "request": "join", "room": that.myroom, "display": 'pcg' };
+                                                    that.mixertest.send({"message": register});
+                                                }
+                                        }});
                                     },
                                     error: function(error) {
                                         Janus.error("  -- Error attaching plugin...", error);
