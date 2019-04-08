@@ -7,18 +7,15 @@ import CardActions from "@material-ui/core/CardActions";
 import IconButton from "@material-ui/core/IconButton";
 import {AudioIcon, AudioOffIcon, VideoIcon, VideoOffIcon} from "../img/svgIcons";
 import NativeSelect from "@material-ui/core/NativeSelect";
+import { withStyles } from '@material-ui/core/styles';
+import Paper from '@material-ui/core/Paper';
+import PropTypes from 'prop-types';
 
-import TransactionManager from 'transaction-manager'
-import MediaServerClient from '../lib/MediaServerClient'
-import PeerConnectionClient from  "../lib/PeerConnectionClient";
+import TransactionManager from "../lib/TransactionManager";   //'transaction-manager'
+//import TransactionManager from '../lib/transaction-manager'
 
-// Put variables in global scope to make them available to the browser console.
-const constraints = window.constraints = {
-    audio: false,
-    video: true
-};
+let participants;
 
-var pc=null;
 class MedoozeVideoRoom extends Component {
 
     constructor(props){
@@ -33,54 +30,30 @@ class MedoozeVideoRoom extends Component {
 
         // create a ref to store the video DOM element
         this.localVideo = React.createRef();
-        this.remoteVideo=React.createRef();
-        this.setLocalVideoRef = element => {
-            this.localVideo = element;
-        };
+        this.remoteVideos=new Array();
+        for(let i=0;i<5;i++){
+            this.remoteVideos[i]=React.createRef();
+        }
 
-        this.server = "https://39.106.100.180:8089/janus";
+
+        //Get our url
+        this.roomId = "1234";
+        this.name = "pcg";
+        this.nopublish = false;
         //this.pc=null;
-        this.url="wss://47.94.235.90:8084";
+        this.url="wss://47.94.235.90:8083";
 
         this.handleStart=this.handleStart.bind(this);
         this.handleVideoOn=this.handleVideoOn.bind(this);
         this.handleAudioOn=this.handleAudioOn.bind(this);
 
-        this.addLocalStream=this.addLocalStream.bind(this);
-        this.handleSelectChange=this.handleSelectChange.bind(this);
-        this.sendTrack=this.sendTrack.bind(this);
-        this.addRemoteTrack=this.addRemoteTrack.bind(this);
-        this.removeRemoteTrack=this.removeRemoteTrack.bind(this);
+        this.connect=this.connect.bind(this);
+        this.addVideoForStream=this.addVideoForStream.bind(this);
+        this.removeVideoForStream=this.removeVideoForStream.bind(this);
     }
 
     componentDidMount() {
-//Connect with websocket
-        const ws = new WebSocket(this.url);
 
-        //Crete transaction manager
-        const tm = new TransactionManager(ws);
-
-        //Create managed peer connection
-        const client = new MediaServerClient(tm);
-
-        //Start on open
-        var that=this;
-        ws.onopen = async ()=>{
-
-            //Create new managed pc
-            pc = await client.createManagedPeerConnection();
-            //On new remote tracks
-            pc.ontrack	= this.addRemoteTrack;
-            pc.ontrackended = this.removeRemoteTrack;
-
-            //Add listeneres
-            /*addTrack.onclick		= ()=> sendTrack();
-            addSimulcastTrack.onclick	= ()=> sendTrack(true);
-            addTrackVP8.onclick		= ()=> sendTrack(false	, "vp8");
-            addSimulcastTrackVP8.onclick	= ()=> sendTrack(true	,"vp8");
-            addTrackH264.onclick		= ()=> sendTrack(false	,"h264");
-            addSimulcastTrackH264.onclick	= ()=> sendTrack(true	,"h264");*/
-        };
     }
 
     componentWillUnmount(){
@@ -99,207 +72,251 @@ class MedoozeVideoRoom extends Component {
 
     };
 
-
-
     handleStart(){
-        this.sendTrack();
+        this.connect(this.url, this.roomId, this.name)
     }
 
-    addRemoteTrack(event)
+    addVideoForStream(stream,muted)
     {
-        console.log(event);
-
-        /*const track	= event.track;
-        const stream	= event.streams[0];
-
-        if (!stream)
-            return console.log("addRemoteTrack() no stream")
-        stream.oninactive = (event)=>console.log(event);
-
-        //Check if video is already present
-        let video = remoteVideos.querySelector("div[id='"+stream.id+"']>video");
-
-        //Check if already present
-        if (video)
-        //Ignore
-            return console.log("addRemoteTrack() video already present for "+stream.id);
-
-        //Create html stuff
-        const div	= document.createElement("div");
-        video		= document.createElement("video");
-
-        //Set id
-        div.id = stream.id;
-
-        //Set video source
-        video.srcObject = stream;
-
-        //Play it
-        video.autoplay = true;
-        video.playsInline = true;
-        video.play();
-
-        //Add them
-        div.appendChild(video);
-        remoteVideos.append(div);
-
-        return div;*/
-    }
-
-    removeRemoteTrack(event)
-    {
-        console.log(event);
-
-        /*const track	= event.track;
-        const stream	= event.streams[0];
-
-        //Check if video is already present
-        let div = remoteVideos.querySelector("div[id='"+stream.id+"']");
-
-        //Check if already present
-        if (!div)
-        //Ignore
-            return console.log("removeRemoteTrack() video not present for "+stream.id);
-
-        remoteVideos.removeChild(div);
-
-        return div;*/
-    }
-
-    addLocalStream(track,stream)
-    {
-        this.localVideo.current=stream;
-    }
-
-    async sendTrack(simulcast,codecs)
-    {
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("addVideoForStream");
         this.localVideo.current.srcObject=stream;
-        //Get video track
-        //const videoTrack = stream.getVideoTracks()[0];
-        //Create audio track
-        /*var audioContext = new AudioContext();
-        var audioTrack = audioContext.createMediaStreamDestination().stream.getAudioTracks()[0];*/
-        //Add to stream
-        //stream.addTrack(audioTrack);
-        //Add local video
-        //this.addLocalStream(videoTrack,stream);
+        //this.localVideo.current.muted=muted;
+        this.localVideo.current.id=stream.id;
+    }
 
-        let videoTrack=stream.getVideoTracks()[0];
-        let audioTrack=stream.getAudioTracks()[0];
+    removeVideoForStream(stream)
+    {
+        console.log("removeVideoForStream");
+        //Get video
+        var that=this;
+        this.localVideo.current.addEventListener('webkitTransitionEnd',function(){
+            //Delete it
+            that.localVideo.current.parentElement.removeChild(that.localVideo.current);
+        });
+        //Disable it first
+        this.localVideo.current.className = "disabled";
+    }
 
-        //The params object
-        const params = {};
+    connect(url,roomId,name)
+    {
+        var that=this;
+        var pc = new RTCPeerConnection({
+            bundlePolicy: "max-bundle",
+            rtcpMuxPolicy : "require"
+        });
 
-        //If using simulcast
-        if (simulcast)
-        //Add simulcast params
-            params.encodings = [
-                { rid: "a"},
-                { rid: "b" , scaleDownResolutionBy: 2.0 },
-                { rid: "c" , scaleDownResolutionBy: 4.0 }
-            ];
+        //Create room url
+        const roomUrl = url +"?id="+roomId;
 
-        //If overriding codecs
-        if (codecs)
-        //Set them to params
-            params.codecs = [codecs];
+        var ws = new WebSocket(roomUrl);
+        var tm = new TransactionManager(ws);
 
-        //Add to pc
-        //const [audioSender,videoSender] = await Promise.all([pc.addTrack(audioTrack,stream),pc.addTrack(videoTrack,stream,params)]);
-    };
+        pc.onaddstream = function(event) {
+            console.debug("pc::onAddStream",event);
+            //Play it
+            //let pNum=participants.length();
+            //that.remoteVideos[pNum-2].current.srcObject=event.stream;
+            //that.addVideoForStream(event.stream);
+        };
+
+        pc.onaddtrack=function(){
+
+        }
+
+        pc.onremovestream = function(event) {
+            console.debug("pc::onRemoveStream",event);
+            //Play it
+            that.removeVideoForStream(event.stream);
+        };
+
+        ws.onopen = async function()
+        {
+            console.log("ws:opened");
+
+            try
+            {
+                if (!that.nopublish)
+                {
+                    const constraints={
+                        audio: true,
+                        video: true
+                    };
+                     let stream = null;
+                     try {
+                        stream = await navigator.mediaDevices.getUserMedia(constraints);
+                         /!* use the stream *!/
+                         //Play it
+                         that.addVideoForStream(stream,true);
+                     } catch(err) {
+                         /!* handle the error *!/
+                         console.log(err.toString());
+                    }
+
+                    console.debug("md::getUserMedia sucess",stream);
+
+                    //Add stream to peer connection
+                    pc.addStream(stream);
+                }
+
+                //Create new offer
+                const offer = await pc.createOffer({
+                    offerToReceiveAudio: true,
+                    offerToReceiveVideo: true
+                });
+
+                console.debug("pc::createOffer sucess",offer);
+
+                //Set it
+                pc.setLocalDescription(offer);
+                console.log("pc::setLocalDescription succes",offer.sdp);
+
+                //Join room
+                const joined = await tm.cmd("join",{
+                    name	: that.name,
+                    sdp	: offer.sdp
+                });
+
+                console.log("cmd::join success",joined);
+
+                //Create answer
+                const answer = new RTCSessionDescription({
+                    type	:'answer',
+                    sdp	: joined.sdp
+                });
+
+                //Set it
+                await pc.setRemoteDescription(answer);
+
+                console.log("pc::setRemoteDescription succes",answer.sdp);
+
+                /*console.log("JOINED");*/
+            } catch (error) {
+                console.error("Error",error);
+                ws.close();
+            }
+        };
+
+        tm.on("event",async function(event) {
+            console.log("ts::event",event);
+
+            switch (event.name)
+            {
+                case "update" :
+                    try
+                    {
+                        console.log("update"+event.data.sdp);
+
+                        //Create new offer
+                        const offer = new RTCSessionDescription({
+                            type : 'offer',
+                            sdp  : event.data.sdp
+                        });
+
+                        //update participant list
+                        participants = event.participants;
+
+                        //Set offer
+                        await pc.setRemoteDescription(offer);
+
+                        console.log("pc::setRemoteDescription succes",offer.sdp);
+
+                        //Create answer
+                        const answer = await pc.createAnswer();
+
+                        console.log("pc::createAnswer succes",answer.sdp);
+
+                        //Only set it locally
+                        await pc.setLocalDescription(answer);
+
+                        console.log("pc::setLocalDescription succes",answer.sdp);
+
+                    } catch (error) {
+                        console.error("Error",error);
+                        ws.close();
+                    }
+                    break;
+                case "participants" :
+                    //update participant list
+                    console.log("participants"+event.participants);
+                    participants = event.participants;
+                    break;
+            }
+        });
+    }
 
     render() {
+        const { classes } = this.props;
         return (
-            <div style={{ padding: 20 }}>
-                <CssBaseline />
-                <Grid container style={styles.root} xs={12} spacing={6} justify="center" zeroMinWidth={0}>
-                    <Grid item xs={12}>
-                        <header >
-                            <h1 className="App-title">Medooze Video Room</h1>
-                        </header>
+                <div className={classes.root}>
+                    <Grid container className={classes.container} spacing={24}>
+                        <Grid item xs={12}>
+                            <header >
+                                <h1 className="App-title">Medooze Video Room</h1>
+                            </header>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <Button color="primary" variant="contained" onClick={this.handleStart}>
+                                {this.state.bStartEchoTestButton?'stop':'start'}
+                            </Button>
+                        </Grid>
+                        <Grid item xs={12}>
+                            <video style={styles.videoLarge} ref={this.localVideo} id="localVideo" autoPlay="true"/>
+                        </Grid>
+                        <Grid item xs={3}>
+                            <video style={styles.videoSmall} ref={this.remoteVideos[0]} id="remoteVideo1" autoPlay="true"/>
+                        </Grid>
+                        <Grid item xs={3}>
+                            <video style={styles.videoSmall} ref={this.remoteVideos[1]} id="remoteVideo2" autoPlay="true"/>
+                        </Grid>
+                        <Grid item xs={3}>
+                            <video style={styles.videoSmall} ref={this.remoteVideos[2]} id="remoteVideo3" autoPlay="true"/>
+                        </Grid>
+                        <Grid item xs={3}>
+                            <video style={styles.videoSmall} ref={this.remoteVideos[3]} id="remoteVideo4" autoPlay="true"/>
+                        </Grid>
                     </Grid>
-                    <Grid item xs={12}>
-                        <Button color="primary" variant="contained" onClick={this.handleStart}>
-                            {this.state.bStartEchoTestButton?'stop':'start'}
-                        </Button>
-                    </Grid>
-                </Grid>
-
-
-
-                <Grid container xs={12} spacing={6} justify="flex-end"  alignItems="flex-end" direction="row">
-                    <Grid item xs={6} >
-                        <Card key='1' style={styles.card}>
-                            <video style={styles.video} ref={this.localVideo} id="localVideo" autoPlay="true"/>
-                            <CardActions style={styles.button}>
-                                <IconButton onClick={this.handleVideoOn} color="primary" aria-label="Add an alarm">
-                                    {this.state.videoEnable?<VideoIcon></VideoIcon>:<VideoOffIcon></VideoOffIcon>}
-                                </IconButton>
-                                <IconButton onClick={this.handleAudioOn} color="secondary" aria-label="Add an alarm2">
-                                    {this.state.audioEnable?<AudioIcon></AudioIcon>:<AudioOffIcon></AudioOffIcon>}
-                                </IconButton>
-                                <NativeSelect
-                                    value={this.state.bitrateValue}
-                                    onChange={this.handleSelectChange('bitrateValue')}
-                                    name="bitrate"
-                                    style={styles.selectEmpty}
-                                >
-                                    <option value={0}>No limit</option>
-                                    <option value={128}>Cap to 128kbit</option>
-                                    <option value={256}>Cap to 256kbit</option>
-                                    <option value={512}>Cap to 512kbit</option>
-                                    <option value={1025}>Cap to 1mbit</option>
-                                    <option value={1500}>Cap to 1.5mbit</option>
-                                    <option value={2000}>Cap to 2mbit</option>
-                                </NativeSelect>
-                            </CardActions>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={6}>
-                        <Card key='2' style={styles.card}>
-                            <video style={styles.video} ref={this.remoteVideo} id="remoteVideo" autoPlay="true"/>
-                            <CardActions style={styles.button}>
-                                <IconButton onClick={this.handleVideoOn} color="primary" aria-label="Add an alarm">
-                                    {this.state.videoEnable?<VideoIcon></VideoIcon>:<VideoOffIcon></VideoOffIcon>}
-                                </IconButton>
-                                <IconButton onClick={this.handleAudioOn} color="secondary" aria-label="Add an alarm2">
-                                    {this.state.audioEnable?<AudioIcon></AudioIcon>:<AudioOffIcon></AudioOffIcon>}
-                                </IconButton>
-                                <label>{this.state.WidthAndHeight}</label>
-                                <label>{this.state.bitrateNow}</label>
-                            </CardActions>
-                        </Card>
-                    </Grid>
-                </Grid>
-
-            </div>
+                </div>
         );
     }
 }
 
-const styles = {
+const styles = theme => ({
     root: {
         flexGrow: 1,
-        textAlign: 'center',
     },
-    card: {
-        maxWidth: 640,
+    container: {
+        direction: 'row',
+        justify: "center",
+        alignItems: 'center',
     },
-    video: {
+    gridLayout:{
+        justify: "center",
+        alignItems: "center",
+    },
+    videoLarge: {
         paddingTop: 5, // 16:9
-        width:480,
+        width:640,
         height:480,
     },
-
-    button: {
-        paddingBottom: 5, // 16:9
+    videoSmall: {
+        paddingTop: 5, // 16:9
+        width:176,
+        height:144,
     },
-
-    selectEmpty: {
-        marginTop:  2,
+    paper: {
+        padding: theme.spacing.unit * 2,
+        textAlign: 'center',
+        height: '100%',
+        color: theme.palette.text.secondary,
     },
+});
+
+MedoozeVideoRoom.propTypes = {
+    classes: PropTypes.object.isRequired,
 };
 
-export default MedoozeVideoRoom;
+export default withStyles(styles)(MedoozeVideoRoom);
+
+
+
+

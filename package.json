@@ -10,7 +10,6 @@
     "react-dom": "^16.4.1",
     "react-scripts": "1.1.4",
     "sdp-transform": "^2.7.0",
-    "transaction-manager": "^2.1.1",
     "websocket": "^1.0.28"
   },
   "scripts": {
