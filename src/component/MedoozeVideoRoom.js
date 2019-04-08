@@ -247,35 +247,17 @@ class MedoozeVideoRoom extends Component {
     render() {
         const { classes } = this.props;
         return (
-                <div className={classes.root}>
-                    <Grid container className={classes.container} spacing={24}>
-                        <Grid item xs={12}>
-                            <header >
-                                <h1 className="App-title">Medooze Video Room</h1>
-                            </header>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Button color="primary" variant="contained" onClick={this.handleStart}>
-                                {this.state.bStartEchoTestButton?'stop':'start'}
-                            </Button>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <video style={styles.videoLarge} ref={this.localVideo} id="localVideo" autoPlay="true"/>
-                        </Grid>
-                        <Grid item xs={3}>
-                            <video style={styles.videoSmall} ref={this.remoteVideos[0]} id="remoteVideo1" autoPlay="true"/>
-                        </Grid>
-                        <Grid item xs={3}>
-                            <video style={styles.videoSmall} ref={this.remoteVideos[1]} id="remoteVideo2" autoPlay="true"/>
-                        </Grid>
-                        <Grid item xs={3}>
-                            <video style={styles.videoSmall} ref={this.remoteVideos[2]} id="remoteVideo3" autoPlay="true"/>
-                        </Grid>
-                        <Grid item xs={3}>
-                            <video style={styles.videoSmall} ref={this.remoteVideos[3]} id="remoteVideo4" autoPlay="true"/>
-                        </Grid>
+            <Grid container className={classes.root} spacing={2}>
+                <Grid item xs={12}>
+                    <Grid container justify="center" spacing={16}>
+                        {[0, 1, 2, 3, 4, 5, 6, 7].map(value => (
+                            <Grid key={value} item xs={3} zeroMinWidth>
+                                <Paper className={classes.paper} />
+                            </Grid>
+                        ))}
                     </Grid>
-                </div>
+                </Grid>
+            </Grid>
         );
     }
 }
