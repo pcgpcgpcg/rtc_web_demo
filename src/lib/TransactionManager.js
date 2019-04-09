@@ -40,6 +40,7 @@ class TransactionManager extends EventEmitter
         this.listener = (msg) => {
             //Process message
             var message = JSON.parse(msg.utf8Data || msg.data);
+            console.log("recv msg:"+msg.data);
 
             //Check type
             switch(message.type)
@@ -199,6 +200,7 @@ class TransactionManager extends EventEmitter
         const json = JSON.stringify(event);
         //Send json
         this.transport.send(json);
+        console.log("transport json:"+json);
 
     }
 

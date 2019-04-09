@@ -13,8 +13,8 @@ import PropTypes from 'prop-types';
 
 import TransactionManager from "../lib/TransactionManager";   //'transaction-manager'
 //import TransactionManager from '../lib/transaction-manager'
-
 let participants;
+let poster_addr='https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1554783370112&di=b8e3916534a569ab6c13fcc8b01e9e32&imgtype=0&src=http%3A%2F%2Fimg.17xsj.com%2Fuploads%2Fallimg%2Fc121126%2F1353910E4M0-52Kb.jpg';
 
 class MedoozeVideoRoom extends Component {
 
@@ -31,7 +31,7 @@ class MedoozeVideoRoom extends Component {
         // create a ref to store the video DOM element
         this.localVideo = React.createRef();
         this.remoteVideos=new Array();
-        for(let i=0;i<5;i++){
+        for(var i=0;i<5;i++){
             this.remoteVideos[i]=React.createRef();
         }
 
@@ -42,6 +42,8 @@ class MedoozeVideoRoom extends Component {
         this.nopublish = false;
         //this.pc=null;
         this.url="wss://47.94.235.90:8083";
+        this.localStreamID="";
+        this.remoteIndex=-1;
 
         this.handleStart=this.handleStart.bind(this);
         this.handleVideoOn=this.handleVideoOn.bind(this);
@@ -100,6 +102,7 @@ class MedoozeVideoRoom extends Component {
     connect(url,roomId,name)
     {
         var that=this;
+        //var pc=new RTCPeerConnection({sdpSemantics:'plan-b'});
         var pc = new RTCPeerConnection({
             bundlePolicy: "max-bundle",
             rtcpMuxPolicy : "require"
@@ -112,21 +115,29 @@ class MedoozeVideoRoom extends Component {
         var tm = new TransactionManager(ws);
 
         pc.onaddstream = function(event) {
-            console.debug("pc::onAddStream",event);
-            //Play it
-            //let pNum=participants.length();
-            //that.remoteVideos[pNum-2].current.srcObject=event.stream;
+            console.warn("pc::onAddStream",event);
+            //local stream already rendered
+            console.warn("that.reamoteIndex:"+that.remoteIndex);
+            if(that.remoteIndex<0){
+                console.warn("already rendered local stream id:"+that.localStreamID);
+                console.warn("already rendered stream id:"+event.stream.id);
+                that.remoteIndex++;
+                return;
+            }
+            that.remoteVideos[that.remoteIndex].current.srcObject=event.stream;
+            that.remoteIndex++;
+
             //that.addVideoForStream(event.stream);
         };
 
         pc.onaddtrack=function(){
-
+            console.warn("pc::onAddTrack");
         }
 
         pc.onremovestream = function(event) {
-            console.debug("pc::onRemoveStream",event);
+            console.warn("pc::onRemoveStream",event);
             //Play it
-            that.removeVideoForStream(event.stream);
+            //that.removeVideoForStream(event.stream);
         };
 
         ws.onopen = async function()
@@ -146,6 +157,8 @@ class MedoozeVideoRoom extends Component {
                         stream = await navigator.mediaDevices.getUserMedia(constraints);
                          /!* use the stream *!/
                          //Play it
+                         that.localStreamID=stream.id;
+                         console.warn("local stream id:"+that.localStreamID);
                          that.addVideoForStream(stream,true);
                      } catch(err) {
                          /!* handle the error *!/
@@ -237,7 +250,7 @@ class MedoozeVideoRoom extends Component {
                     break;
                 case "participants" :
                     //update participant list
-                    console.log("participants"+event.participants);
+                    console.warn("participants"+event.participants);
                     participants = event.participants;
                     break;
             }
@@ -247,17 +260,42 @@ class MedoozeVideoRoom extends Component {
     render() {
         const { classes } = this.props;
         return (
-            <Grid container className={classes.root} spacing={2}>
+            <div style={{ padding: 20 }}>
+            <Grid container className={classes.container} spacing={8}>
                 <Grid item xs={12}>
-                    <Grid container justify="center" spacing={16}>
-                        {[0, 1, 2, 3, 4, 5, 6, 7].map(value => (
-                            <Grid key={value} item xs={3} zeroMinWidth>
-                                <Paper className={classes.paper} />
+                    <header >
+                        <h1 className="App-title">Medooze Video Room</h1>
+                    </header>
+                </Grid>
+                <Grid item xs={12}>
+                    <Button color="primary" variant="contained" onClick={this.handleStart}>
+                        {this.state.bStartEchoTestButton?'stop':'start'}
+                    </Button>
+                </Grid>
+                <Grid container justify="center" spacing={8}>
+                <Grid item xs={12}>
+                    <video className={classes.videoLarge}
+                           ref={this.localVideo}
+                           id="localVideo"
+                           poster={poster_addr}
+                           autoPlay="true"/>
+                </Grid>
+                </Grid>
+                <Grid item xs={12}>
+                    <Grid container justify="flex-start" spacing={24}>
+                        {[0, 1, 2, 3].map(value => (
+                            <Grid key={value} item xs={1} zeroMinWidth>
+                                <video className={classes.videoSmall}
+                                       ref={this.remoteVideos[value]}
+                                       id={value}
+                                       poster={poster_addr}
+                                       autoPlay="true"/>
                             </Grid>
                         ))}
                     </Grid>
                 </Grid>
             </Grid>
+            </div>
         );
     }
 }
@@ -265,6 +303,7 @@ class MedoozeVideoRoom extends Component {
 const styles = theme => ({
     root: {
         flexGrow: 1,
+        padding: 20,
     },
     container: {
         direction: 'row',
@@ -277,18 +316,19 @@ const styles = theme => ({
     },
     videoLarge: {
         paddingTop: 5, // 16:9
-        width:640,
-        height:480,
+        width:'70%',
+        height:'90%',
     },
     videoSmall: {
-        paddingTop: 5, // 16:9
-        width:176,
-        height:144,
+        paddingTop: 1, // 16:9
+        width:'100%',
+        height:'100%',
+        alignItems:"flex-start",
     },
     paper: {
         padding: theme.spacing.unit * 2,
         textAlign: 'center',
-        height: '100%',
+        height: '1800',
         color: theme.palette.text.secondary,
     },
 });
