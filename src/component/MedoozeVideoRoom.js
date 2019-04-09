@@ -38,7 +38,9 @@ class MedoozeVideoRoom extends Component {
 
         //Get our url
         this.roomId = "1234";
-        this.name = "pcg";
+        var myDate = new Date();
+        myDate.toLocaleString();
+        this.name = myDate.toLocaleString();
         this.nopublish = false;
         //this.pc=null;
         this.url="wss://47.94.235.90:8083";
@@ -120,7 +122,6 @@ class MedoozeVideoRoom extends Component {
             console.warn("that.reamoteIndex:"+that.remoteIndex);
             if(that.remoteIndex<0){
                 console.warn("already rendered local stream id:"+that.localStreamID);
-                console.warn("already rendered stream id:"+event.stream.id);
                 that.remoteIndex++;
                 return;
             }
@@ -129,10 +130,6 @@ class MedoozeVideoRoom extends Component {
 
             //that.addVideoForStream(event.stream);
         };
-
-        pc.onaddtrack=function(){
-            console.warn("pc::onAddTrack");
-        }
 
         pc.onremovestream = function(event) {
             console.warn("pc::onRemoveStream",event);
@@ -283,8 +280,8 @@ class MedoozeVideoRoom extends Component {
                 </Grid>
                 <Grid item xs={12}>
                     <Grid container justify="flex-start" spacing={24}>
-                        {[0, 1, 2, 3].map(value => (
-                            <Grid key={value} item xs={1} zeroMinWidth>
+                        {[0, 1, 2].map(value => (
+                            <Grid key={value} item xs={3} zeroMinWidth>
                                 <video className={classes.videoSmall}
                                        ref={this.remoteVideos[value]}
                                        id={value}

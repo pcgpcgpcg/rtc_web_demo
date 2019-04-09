@@ -40,7 +40,7 @@ class TransactionManager extends EventEmitter
         this.listener = (msg) => {
             //Process message
             var message = JSON.parse(msg.utf8Data || msg.data);
-            console.log("recv msg:"+msg.data);
+            console.warn("recv msg:"+msg.data);
 
             //Check type
             switch(message.type)
@@ -53,19 +53,23 @@ class TransactionManager extends EventEmitter
                         namespace	: message.namespace,
                         accept		: (data) => {
                             //Send response back
-                            transport.send(JSON.stringify ({
+                            const json=JSON.stringify ({
                                 type	 : "response",
                                 transId	 : message.transId,
                                 data	 : data
-                            }));
+                            })
+                            transport.send(json);
+                            console.warn("transport json:"+json);
                         },
                         reject	: (data) => {
                             //Send response back
-                            transport.send(JSON.stringify ({
+                            const json=JSON.stringify ({
                                 type	 : "error",
                                 transId	 : message.transId,
                                 data	 : data
-                            }));
+                            });
+                            transport.send(json);
+                            console.warn("transport json:"+json);
                         }
                     };
 
@@ -170,7 +174,7 @@ class TransactionManager extends EventEmitter
             try {
                 //Send json
                 this.transport.send(json);
-                console.log("transport json:"+json);
+                console.warn("transport json:"+json);
             } catch (e) {
                 //delete transacetion
                 this.transactions.delete(cmd.transId);
@@ -200,7 +204,7 @@ class TransactionManager extends EventEmitter
         const json = JSON.stringify(event);
         //Send json
         this.transport.send(json);
-        console.log("transport json:"+json);
+        console.warn("transport json:"+json);
 
     }
 
