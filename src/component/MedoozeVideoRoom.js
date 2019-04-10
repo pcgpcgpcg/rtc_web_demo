@@ -104,11 +104,11 @@ class MedoozeVideoRoom extends Component {
     connect(url,roomId,name)
     {
         var that=this;
-        //var pc=new RTCPeerConnection({sdpSemantics:'plan-b'});
-        var pc = new RTCPeerConnection({
+        var pc=new RTCPeerConnection({sdpSemantics:'unified-plan'});
+        /*var pc = new RTCPeerConnection({
             bundlePolicy: "max-bundle",
             rtcpMuxPolicy : "require"
-        });
+        });*/
 
         //Create room url
         const roomUrl = url +"?id="+roomId;
@@ -207,14 +207,14 @@ class MedoozeVideoRoom extends Component {
         };
 
         tm.on("event",async function(event) {
-            console.log("ts::event",event);
+            console.warn("ts::event",event);
 
             switch (event.name)
             {
                 case "update" :
                     try
                     {
-                        console.log("update"+event.data.sdp);
+                        console.warn("update"+event.data.sdp);
 
                         //Create new offer
                         const offer = new RTCSessionDescription({
@@ -229,6 +229,11 @@ class MedoozeVideoRoom extends Component {
                         await pc.setRemoteDescription(offer);
 
                         console.log("pc::setRemoteDescription succes",offer.sdp);
+                        //此处根据participants数量来添加对应数量的transceiver
+                        for(let i=0;i<that.remoteVideos;i++){
+                            pc.addTransceiver("audio",{direction: "recvonly"});
+                            pc.addTransceiver("video",{direction: "recvonly"});
+                        }
 
                         //Create answer
                         const answer = await pc.createAnswer();
