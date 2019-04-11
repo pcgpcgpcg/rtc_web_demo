@@ -104,19 +104,18 @@ class MedoozeVideoRoom extends Component {
     connect(url,roomId,name)
     {
         var that=this;
-        var pc=new RTCPeerConnection({sdpSemantics:'unified-plan'});
+        //Connect with websocket
+        const ws = new WebSocket(url,"unified-plan");
+        //Crete transaction manager
+        const tm = new TransactionManager(ws);
         /*var pc = new RTCPeerConnection({
             bundlePolicy: "max-bundle",
             rtcpMuxPolicy : "require"
         });*/
-
         //Create room url
         const roomUrl = url +"?id="+roomId;
 
-        var ws = new WebSocket(roomUrl);
-        var tm = new TransactionManager(ws);
-
-        pc.onaddstream = function(event) {
+ /*       pc.onaddstream = function(event) {
             console.warn("pc::onAddStream",event);
             //local stream already rendered
             console.warn("that.reamoteIndex:"+that.remoteIndex);
@@ -137,126 +136,180 @@ class MedoozeVideoRoom extends Component {
             //that.removeVideoForStream(event.stream);
         };
 
+        pc.onnegotiationneeded = async () => {
+            console.log("pc.onnegotiationneeded！");
+            try {
+                await pc.setLocalDescription(await pc.createOffer( ));
+                console.log(pc.localDescription.type);
+                console.log(pc.localDescription.sdp);
+                // send the offer to the other peer
+                //Join room
+                /!*const joined = await tm.cmd("join",{
+                    name	: that.name,
+                    sdp	: pc.localDescription.sdp
+                });
+                console.log("pc.localDescription:"+pc.localDescription);*!/
+                //signaling.send({desc: pc.localDescription});
+            } catch (err){
+                console.error(err);
+            }
+        };
+
+// once media for a remote track arrives, show it in the remote video element
+        pc.ontrack = (event) => {
+            console.log("pc.ontrack！");
+            // don't set srcObject again if it is already set.
+            //if (remoteView.srcObject) return;
+            //remoteView.srcObject = event.streams[0];
+        };*/
+
+        //myPeerConnection.onicecandidate = handleICECandidateEvent;
+        //myPeerConnection.onremovetrack = handleRemoveTrackEvent;
+        //myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
+        //myPeerConnection.onicegatheringstatechange = handleICEGatheringStateChangeEvent;
+        //myPeerConnection.onsignalingstatechange = handleSignalingStateChangeEvent;
+
         ws.onopen = async function()
         {
             console.log("ws:opened");
+            var pc=new RTCPeerConnection({sdpSemantics:'unified-plan'});
+            //Need to init like this
+           /* pc.addTransceiver("audio",{direction:"inactive"});
+            pc.addTransceiver("video",{direction:"inactive"});
+
+
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            const answer = await tm.cmd("offer",{sdp: offer.sdp});
+            pc.setRemoteDescription({type:"answer",sdp:answer.sdp});*/
+            const pending = [];
+            let executing = false;
+            // once media for a remote track arrives, show it in the remote video element
+            pc.ontrack = (event) => {
+                console.log("pc.ontrack！");
+            };
+
+            const execute = async (renegotiation)=>{
+                //Add to pending
+                pending.push(renegotiation);
+                //If executing already
+                if (executing)
+                //Do not run agin loop
+                    return;
+                //Executing
+                executing = true;
+                //Execute all pending renegotiations
+                while (pending.length)
+                    //Execute first
+                    await pending.shift()();
+                //End execution
+                executing = false;
+            };
+
+            pc.onnegotiationneeded = async ()=>{
+                execute(async()=>{
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    const answer = await tm.cmd("offer",{sdp: offer.sdp});
+                    return pc.setRemoteDescription({type:"answer",sdp:answer.sdp});
+                });
+            };
+
 
             try
             {
-                if (!that.nopublish)
-                {
                     const constraints={
                         audio: true,
                         video: true
                     };
-                     let stream = null;
+                     //let stream = null;
                      try {
-                        stream = await navigator.mediaDevices.getUserMedia(constraints);
-                         /!* use the stream *!/
+                         const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
                          //Play it
                          that.localStreamID=stream.id;
-                         console.warn("local stream id:"+that.localStreamID);
-                         that.addVideoForStream(stream,true);
+                         that.localVideo.current.srcObject=stream;
+                         that.localVideo.current.id=stream.id;
                      } catch(err) {
-                         /!* handle the error *!/
                          console.log(err.toString());
                     }
-
-                    console.debug("md::getUserMedia sucess",stream);
-
-                    //Add stream to peer connection
-                    pc.addStream(stream);
-                }
-
-                //Create new offer
-                const offer = await pc.createOffer({
-                    offerToReceiveAudio: true,
-                    offerToReceiveVideo: true
-                });
-
-                console.debug("pc::createOffer sucess",offer);
-
-                //Set it
-                pc.setLocalDescription(offer);
-                console.log("pc::setLocalDescription succes",offer.sdp);
-
-                //Join room
-                const joined = await tm.cmd("join",{
-                    name	: that.name,
-                    sdp	: offer.sdp
-                });
-
-                console.log("cmd::join success",joined);
-
-                //Create answer
-                const answer = new RTCSessionDescription({
-                    type	:'answer',
-                    sdp	: joined.sdp
-                });
-
-                //Set it
-                await pc.setRemoteDescription(answer);
-
-                console.log("pc::setRemoteDescription succes",answer.sdp);
-
-                /*console.log("JOINED");*/
             } catch (error) {
                 console.error("Error",error);
                 ws.close();
             }
+
+            tm.on("cmd",async (cmd)=>{
+                switch(cmd.name)
+                {
+                    case "offer":
+                        execute(async ()=>{
+                            await pc.setRemoteDescription({type:"offer",sdp:cmd.data.sdp});
+                            const answer = await pc.createAnswer();
+                            cmd.accept({sdp:answer.sdp});
+                            return pc.setLocalDescription(answer);
+                        });
+                        break;
+                    default:
+                        cmd.reject();
+                }
+            });
+
+            tm.on("event",async function(event) {
+                console.warn("ts::event",event);
+
+                switch (event.name)
+                {
+                    case "update" :
+                        try
+                        {
+                            console.warn("update"+event.data.sdp);
+
+                            //Create new offer
+                            const offer = new RTCSessionDescription({
+                                type : 'offer',
+                                sdp  : event.data.sdp
+                            });
+
+                            //update participant list
+                            participants = event.participants;
+
+                            //Set offer
+                            await pc.setRemoteDescription(offer);
+
+                            console.log("pc::setRemoteDescription succes",offer.sdp);
+                            //此处根据participants数量来添加对应数量的transceiver
+                            for(let i=0;i<that.remoteVideos;i++){
+                                pc.addTransceiver("audio",{direction: "recvonly"});
+                                pc.addTransceiver("video",{direction: "recvonly"});
+                            }
+
+                            //Create answer
+                            const answer = await pc.createAnswer();
+
+                            console.log("pc::createAnswer succes",answer.sdp);
+
+                            //Only set it locally
+                            await pc.setLocalDescription(answer);
+
+                            console.log("pc::setLocalDescription succes",answer.sdp);
+
+                        } catch (error) {
+                            console.error("Error",error);
+                            ws.close();
+                        }
+                        break;
+                    case "participants" :
+                        //update participant list
+                        console.warn("participants"+event.participants);
+                        participants = event.participants;
+                        break;
+                }
+            });
+
         };
 
-        tm.on("event",async function(event) {
-            console.warn("ts::event",event);
 
-            switch (event.name)
-            {
-                case "update" :
-                    try
-                    {
-                        console.warn("update"+event.data.sdp);
-
-                        //Create new offer
-                        const offer = new RTCSessionDescription({
-                            type : 'offer',
-                            sdp  : event.data.sdp
-                        });
-
-                        //update participant list
-                        participants = event.participants;
-
-                        //Set offer
-                        await pc.setRemoteDescription(offer);
-
-                        console.log("pc::setRemoteDescription succes",offer.sdp);
-                        //此处根据participants数量来添加对应数量的transceiver
-                        for(let i=0;i<that.remoteVideos;i++){
-                            pc.addTransceiver("audio",{direction: "recvonly"});
-                            pc.addTransceiver("video",{direction: "recvonly"});
-                        }
-
-                        //Create answer
-                        const answer = await pc.createAnswer();
-
-                        console.log("pc::createAnswer succes",answer.sdp);
-
-                        //Only set it locally
-                        await pc.setLocalDescription(answer);
-
-                        console.log("pc::setLocalDescription succes",answer.sdp);
-
-                    } catch (error) {
-                        console.error("Error",error);
-                        ws.close();
-                    }
-                    break;
-                case "participants" :
-                    //update participant list
-                    console.warn("participants"+event.participants);
-                    participants = event.participants;
-                    break;
-            }
-        });
     }
 
     render() {
