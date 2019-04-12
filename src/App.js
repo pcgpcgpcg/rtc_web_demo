@@ -16,7 +16,7 @@ import {VideoIcon,VideoOffIcon,AudioIcon,AudioOffIcon} from './img/svgIcons'
 import NativeSelect from '@material-ui/core/NativeSelect';
 import EchoTest from './component/EchoTest'
 import PTTAudio from './component/PTTAudio'
-import MedoozeVideoRoom from './component/MedoozeVideoRoom'
+import MedoozeVideoRoom2 from './component/MedoozeVideoRoom2'
 
 class App extends Component {
 
@@ -43,7 +43,7 @@ class App extends Component {
     return (
       <div style={{ padding: 20 }}>
           {/*<PTTAudio id="PTTTest1"></PTTAudio>*/}
-          <MedoozeVideoRoom id="MedoozeVideoRoom"></MedoozeVideoRoom>
+          <MedoozeVideoRoom2 id="MedoozeVideoRoom2"></MedoozeVideoRoom2>
       </div>
     );
   }

@@ -23,7 +23,7 @@ class MediaServerClient
 		});
 	}
 	
-	async createManagedPeerConnection(options)
+	async createManagedPeerConnection(name,options)
 	{
 		//Check if running
 		if (!this.ns)
@@ -55,6 +55,8 @@ class MediaServerClient
 		
 		//Connect
 		const remote = await this.ns.cmd("create",localInfo.plain());
+
+		console.log("cmd::join success",joined);
 		
 		//Get peer connection id
 		const id = remote.id;

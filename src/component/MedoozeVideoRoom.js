@@ -12,8 +12,10 @@ import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 
 import TransactionManager from "../lib/TransactionManager";   //'transaction-manager'
+import MediaServerClient from '../lib/MediaServerClient'
 //import TransactionManager from '../lib/transaction-manager'
 let participants;
+let pc;
 let poster_addr='https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1554783370112&di=b8e3916534a569ab6c13fcc8b01e9e32&imgtype=0&src=http%3A%2F%2Fimg.17xsj.com%2Fuploads%2Fallimg%2Fc121126%2F1353910E4M0-52Kb.jpg';
 
 class MedoozeVideoRoom extends Component {
@@ -45,15 +47,15 @@ class MedoozeVideoRoom extends Component {
         //this.pc=null;
         this.url="wss://47.94.235.90:8083";
         this.localStreamID="";
-        this.remoteIndex=-1;
+        this.remoteIndex=0;
 
         this.handleStart=this.handleStart.bind(this);
         this.handleVideoOn=this.handleVideoOn.bind(this);
         this.handleAudioOn=this.handleAudioOn.bind(this);
 
         this.connect=this.connect.bind(this);
-        this.addVideoForStream=this.addVideoForStream.bind(this);
-        this.removeVideoForStream=this.removeVideoForStream.bind(this);
+        this.addRemoteTrack=this.addRemoteTrack.bind(this);
+        this.removeRemoteTrack=this.removeRemoteTrack.bind(this);
     }
 
     componentDidMount() {
@@ -80,89 +82,47 @@ class MedoozeVideoRoom extends Component {
         this.connect(this.url, this.roomId, this.name)
     }
 
-    addVideoForStream(stream,muted)
+    addRemoteTrack(event)
     {
-        console.log("addVideoForStream");
-        this.localVideo.current.srcObject=stream;
-        //this.localVideo.current.muted=muted;
-        this.localVideo.current.id=stream.id;
+        console.log(event);
+
+        const track	= event.track;
+        const stream	= event.streams[0];
+
+        if (!stream)
+            return console.log("addRemoteTrack() no stream")
+        stream.oninactive = (event)=>console.log(event);
+
+        //Check if video is already present
+        this.remoteVideos[this.remoteIndex].current.srcObject=stream;
+        //let video = remoteVideos.querySelector("div[id='"+stream.id+"']>video");
+        //Check if already present
+        //if (video)
+        //Ignore
+            //return console.log("addRemoteTrack() video already present for "+stream.id);
     }
 
-    removeVideoForStream(stream)
+    removeRemoteTrack(event)
     {
-        console.log("removeVideoForStream");
-        //Get video
-        var that=this;
-        this.localVideo.current.addEventListener('webkitTransitionEnd',function(){
-            //Delete it
-            that.localVideo.current.parentElement.removeChild(that.localVideo.current);
-        });
-        //Disable it first
-        this.localVideo.current.className = "disabled";
+        console.log(event);
+        const track	= event.track;
+        const stream	= event.streams[0];
+        //Check if video is already present
+        //看看这个video stream有没有正在播放，如果正在播放，就从remoteVideos里面移除掉
+        //记住,react是数据驱动，改了数组自然就给渲染好了
     }
 
     connect(url,roomId,name)
     {
         var that=this;
-        //Connect with websocket
-        const ws = new WebSocket(url,"unified-plan");
+
+        const ws = new WebSocket(url);
         //Crete transaction manager
         const tm = new TransactionManager(ws);
-        /*var pc = new RTCPeerConnection({
-            bundlePolicy: "max-bundle",
-            rtcpMuxPolicy : "require"
-        });*/
+        //Create managed peer connection
+        const client = new MediaServerClient(tm);
         //Create room url
         const roomUrl = url +"?id="+roomId;
-
- /*       pc.onaddstream = function(event) {
-            console.warn("pc::onAddStream",event);
-            //local stream already rendered
-            console.warn("that.reamoteIndex:"+that.remoteIndex);
-            if(that.remoteIndex<0){
-                console.warn("already rendered local stream id:"+that.localStreamID);
-                that.remoteIndex++;
-                return;
-            }
-            that.remoteVideos[that.remoteIndex].current.srcObject=event.stream;
-            that.remoteIndex++;
-
-            //that.addVideoForStream(event.stream);
-        };
-
-        pc.onremovestream = function(event) {
-            console.warn("pc::onRemoveStream",event);
-            //Play it
-            //that.removeVideoForStream(event.stream);
-        };
-
-        pc.onnegotiationneeded = async () => {
-            console.log("pc.onnegotiationneeded！");
-            try {
-                await pc.setLocalDescription(await pc.createOffer( ));
-                console.log(pc.localDescription.type);
-                console.log(pc.localDescription.sdp);
-                // send the offer to the other peer
-                //Join room
-                /!*const joined = await tm.cmd("join",{
-                    name	: that.name,
-                    sdp	: pc.localDescription.sdp
-                });
-                console.log("pc.localDescription:"+pc.localDescription);*!/
-                //signaling.send({desc: pc.localDescription});
-            } catch (err){
-                console.error(err);
-            }
-        };
-
-// once media for a remote track arrives, show it in the remote video element
-        pc.ontrack = (event) => {
-            console.log("pc.ontrack！");
-            // don't set srcObject again if it is already set.
-            //if (remoteView.srcObject) return;
-            //remoteView.srcObject = event.streams[0];
-        };*/
-
         //myPeerConnection.onicecandidate = handleICECandidateEvent;
         //myPeerConnection.onremovetrack = handleRemoveTrackEvent;
         //myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
@@ -172,144 +132,24 @@ class MedoozeVideoRoom extends Component {
         ws.onopen = async function()
         {
             console.log("ws:opened");
-            var pc=new RTCPeerConnection({sdpSemantics:'unified-plan'});
-            //Need to init like this
-           /* pc.addTransceiver("audio",{direction:"inactive"});
-            pc.addTransceiver("video",{direction:"inactive"});
-
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            const answer = await tm.cmd("offer",{sdp: offer.sdp});
-            pc.setRemoteDescription({type:"answer",sdp:answer.sdp});*/
-            const pending = [];
-            let executing = false;
-            // once media for a remote track arrives, show it in the remote video element
-            pc.ontrack = (event) => {
-                console.log("pc.ontrack！");
+            //Create new managed pc
+            pc = await client.createManagedPeerConnection("pcg");
+            //On new remote tracks
+            pc.ontrack	= that.addRemoteTrack;
+            pc.ontrackended = that.removeRemoteTrack;
+            //现在这里发送试试
+            const constraints={
+                audio: true,
+                video: true
             };
-
-            const execute = async (renegotiation)=>{
-                //Add to pending
-                pending.push(renegotiation);
-                //If executing already
-                if (executing)
-                //Do not run agin loop
-                    return;
-                //Executing
-                executing = true;
-                //Execute all pending renegotiations
-                while (pending.length)
-                    //Execute first
-                    await pending.shift()();
-                //End execution
-                executing = false;
-            };
-
-            pc.onnegotiationneeded = async ()=>{
-                execute(async()=>{
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    const answer = await tm.cmd("offer",{sdp: offer.sdp});
-                    return pc.setRemoteDescription({type:"answer",sdp:answer.sdp});
-                });
-            };
-
-
-            try
-            {
-                    const constraints={
-                        audio: true,
-                        video: true
-                    };
-                     //let stream = null;
-                     try {
-                         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
-
-                         //Play it
-                         that.localStreamID=stream.id;
-                         that.localVideo.current.srcObject=stream;
-                         that.localVideo.current.id=stream.id;
-                     } catch(err) {
-                         console.log(err.toString());
-                    }
-            } catch (error) {
-                console.error("Error",error);
-                ws.close();
+            //let stream = null;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                stream.getTracks().forEach(async (track) => await pc.addTrack(track,stream));
+            } catch(err) {
+                console.log(err.toString());
             }
-
-            tm.on("cmd",async (cmd)=>{
-                switch(cmd.name)
-                {
-                    case "offer":
-                        execute(async ()=>{
-                            await pc.setRemoteDescription({type:"offer",sdp:cmd.data.sdp});
-                            const answer = await pc.createAnswer();
-                            cmd.accept({sdp:answer.sdp});
-                            return pc.setLocalDescription(answer);
-                        });
-                        break;
-                    default:
-                        cmd.reject();
-                }
-            });
-
-            tm.on("event",async function(event) {
-                console.warn("ts::event",event);
-
-                switch (event.name)
-                {
-                    case "update" :
-                        try
-                        {
-                            console.warn("update"+event.data.sdp);
-
-                            //Create new offer
-                            const offer = new RTCSessionDescription({
-                                type : 'offer',
-                                sdp  : event.data.sdp
-                            });
-
-                            //update participant list
-                            participants = event.participants;
-
-                            //Set offer
-                            await pc.setRemoteDescription(offer);
-
-                            console.log("pc::setRemoteDescription succes",offer.sdp);
-                            //此处根据participants数量来添加对应数量的transceiver
-                            for(let i=0;i<that.remoteVideos;i++){
-                                pc.addTransceiver("audio",{direction: "recvonly"});
-                                pc.addTransceiver("video",{direction: "recvonly"});
-                            }
-
-                            //Create answer
-                            const answer = await pc.createAnswer();
-
-                            console.log("pc::createAnswer succes",answer.sdp);
-
-                            //Only set it locally
-                            await pc.setLocalDescription(answer);
-
-                            console.log("pc::setLocalDescription succes",answer.sdp);
-
-                        } catch (error) {
-                            console.error("Error",error);
-                            ws.close();
-                        }
-                        break;
-                    case "participants" :
-                        //update participant list
-                        console.warn("participants"+event.participants);
-                        participants = event.participants;
-                        break;
-                }
-            });
-
         };
-
-
     }
 
     render() {

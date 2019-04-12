@@ -323,7 +323,6 @@ class PeerConnectionClient
 			//Add it
 			this.remoteInfo.addStream(cloned);
 		}
-		
 		//Set it
 		await this.pc.setRemoteDescription({
 			type	: "answer",
