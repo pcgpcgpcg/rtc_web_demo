@@ -46,7 +46,6 @@ class MediaServerClient
 		
 		//Create offer
 		const offer = await pc.createOffer();
-		
 		//Parse local info
 		const localInfo = SDPInfo.parse(offer.sdp.replace(": send rid=",":send "));
 		
@@ -54,9 +53,15 @@ class MediaServerClient
 		await pc.setLocalDescription(offer);
 		
 		//Connect
-		const remote = await this.ns.cmd("create",localInfo.plain());
+		//const remote = await this.ns.cmd("create",localInfo.plain());
+		console.log("Create offer:"+localInfo);
+		//join room
+		const remote=await this.ns.cmd("join",{
+			name : name,
+			sdp: localInfo.plain()
+		});
 
-		console.log("cmd::join success",joined);
+		console.log("cmd::join success",remote);
 		
 		//Get peer connection id
 		const id = remote.id;

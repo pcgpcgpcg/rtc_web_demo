@@ -324,6 +324,7 @@ class PeerConnectionClient
 			this.remoteInfo.addStream(cloned);
 		}
 		//Set it
+		//console.log("this.remoteInfo:"+this.remoteInfo.toString());
 		await this.pc.setRemoteDescription({
 			type	: "answer",
 			sdp	: simulcast03 ? this.remoteInfo.toString().replace(":recv ",": recv rid=") : this.remoteInfo.toString()

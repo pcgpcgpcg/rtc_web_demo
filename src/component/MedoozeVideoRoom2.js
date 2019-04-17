@@ -12,8 +12,10 @@ import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
 
 import TransactionManager from "../lib/TransactionManager";   //'transaction-manager'
+import MediaServerClient from "../lib/MediaServerClient";
 //import TransactionManager from '../lib/transaction-manager'
 let participants;
+let pc;
 let joined=false;
 let poster_addr='https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1554783370112&di=b8e3916534a569ab6c13fcc8b01e9e32&imgtype=0&src=http%3A%2F%2Fimg.17xsj.com%2Fuploads%2Fallimg%2Fc121126%2F1353910E4M0-52Kb.jpg';
 
@@ -53,8 +55,8 @@ class MedoozeVideoRoom2 extends Component {
         this.handleAudioOn=this.handleAudioOn.bind(this);
 
         this.connect=this.connect.bind(this);
-        this.addVideoForStream=this.addVideoForStream.bind(this);
-        this.removeVideoForStream=this.removeVideoForStream.bind(this);
+        this.addRemoteTrack=this.addRemoteTrack.bind(this);
+        this.removeRemoteTrack=this.removeRemoteTrack.bind(this);
     }
 
     componentDidMount() {
@@ -102,6 +104,14 @@ class MedoozeVideoRoom2 extends Component {
         this.localVideo.current.className = "disabled";
     }
 
+    addRemoteTrack(event){
+        console.log("addRemoteTrack:"+event);
+    }
+
+    removeRemoteTrack(event){
+        console.log("removeRemoteTrack:"+event);
+    }
+
     connect(url,roomId,name)
     {
         var that=this;
@@ -111,129 +121,23 @@ class MedoozeVideoRoom2 extends Component {
         const ws = new WebSocket(roomUrl,"unified-plan");
         //Crete transaction manager
         const tm = new TransactionManager(ws);
-        /*var pc = new RTCPeerConnection({
-            bundlePolicy: "max-bundle",
-            rtcpMuxPolicy : "require"
-        });*/
-
-
- /*       pc.onaddstream = function(event) {
-            console.warn("pc::onAddStream",event);
-            //local stream already rendered
-            console.warn("that.reamoteIndex:"+that.remoteIndex);
-            if(that.remoteIndex<0){
-                console.warn("already rendered local stream id:"+that.localStreamID);
-                that.remoteIndex++;
-                return;
-            }
-            that.remoteVideos[that.remoteIndex].current.srcObject=event.stream;
-            that.remoteIndex++;
-
-            //that.addVideoForStream(event.stream);
-        };
-
-        pc.onremovestream = function(event) {
-            console.warn("pc::onRemoveStream",event);
-            //Play it
-            //that.removeVideoForStream(event.stream);
-        };
-
-        pc.onnegotiationneeded = async () => {
-            console.log("pc.onnegotiationneeded！");
-            try {
-                await pc.setLocalDescription(await pc.createOffer( ));
-                console.log(pc.localDescription.type);
-                console.log(pc.localDescription.sdp);
-                // send the offer to the other peer
-                //Join room
-                /!*const joined = await tm.cmd("join",{
-                    name	: that.name,
-                    sdp	: pc.localDescription.sdp
-                });
-                console.log("pc.localDescription:"+pc.localDescription);*!/
-                //signaling.send({desc: pc.localDescription});
-            } catch (err){
-                console.error(err);
-            }
-        };
-
-// once media for a remote track arrives, show it in the remote video element
-        pc.ontrack = (event) => {
-            console.log("pc.ontrack！");
-            // don't set srcObject again if it is already set.
-            //if (remoteView.srcObject) return;
-            //remoteView.srcObject = event.streams[0];
-        };*/
-
+        //create managed peer connection
+        const client=new MediaServerClient(tm);  
         //myPeerConnection.onicecandidate = handleICECandidateEvent;
         //myPeerConnection.onremovetrack = handleRemoveTrackEvent;
         //myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
         //myPeerConnection.onicegatheringstatechange = handleICEGatheringStateChangeEvent;
         //myPeerConnection.onsignalingstatechange = handleSignalingStateChangeEvent;
-
         ws.onopen = async function()
         {
             console.log("ws:opened");
-            var pc=new RTCPeerConnection({sdpSemantics:'unified-plan'});
-            //Need to init like this
-            /*pc.addTransceiver("audio",{direction:"inactive"});
-            pc.addTransceiver("video",{direction:"inactive"});
+            //create new managed pc
+            pc=await client.createManagedPeerConnection();
 
-
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            //const answer = await tm.cmd("offer",{sdp: offer.sdp});
-            const answer = await tm.cmd("join",{
-                name	: name,
-                sdp	: offer.sdp
-            });
-            pc.setRemoteDescription({type:"answer",sdp:answer.sdp});*/
-            const pending = [];
-            let executing = false;
-            // once media for a remote track arrives, show it in the remote video element
-            pc.ontrack = (event) => {
-                console.log("pc.ontrack！");
-            };
-
-            const execute = async (renegotiation)=>{
-                //Add to pending
-                pending.push(renegotiation);
-                //If executing already
-                if (executing)
-                //Do not run agin loop
-                    return;
-                //Executing
-                executing = true;
-                //Execute all pending renegotiations
-                while (pending.length)
-                    //Execute first
-                    await pending.shift()();
-                //End execution
-                executing = false;
-            };
-
-            pc.onnegotiationneeded = async ()=>{
-                execute(async()=>{
-                    const offer = await pc.createOffer();
-                    await pc.setLocalDescription(offer);
-                    //如果还没有加入房间进行sdp交换
-                    console.log(pc.signalingState);
-                    if (!joined){
-                        const answer = await tm.cmd("join",{
-                            name	: name,
-                            sdp	: offer.sdp
-                        });
-                        await pc.setRemoteDescription({type:"answer",sdp:answer.sdp});
-                        joined=true;
-                    }else{
-
-                    }
-                    //const answer = await tm.cmd("offer",{sdp: offer.sdp});
-                    //return pc.setRemoteDescription({type:"answer",sdp:answer.sdp});
-                });
-            };
-
-
+            //on new remote tracks
+            pc.ontrack=that.addRemoteTrack;
+            pc.ontrackended=that.removeRemoteTrack;
+            //add local camera and mic media          
             try
             {
                     const constraints={
@@ -257,22 +161,8 @@ class MedoozeVideoRoom2 extends Component {
                 ws.close();
             }
 
-            tm.on("cmd",async (cmd)=>{
-                switch(cmd.name)
-                {
-                    case "offer":
-                        execute(async ()=>{
-                            await pc.setRemoteDescription({type:"offer",sdp:cmd.data.sdp});
-                            const answer = await pc.createAnswer();
-                            cmd.accept({sdp:answer.sdp});
-                            return pc.setLocalDescription(answer);
-                        });
-                        break;
-                    default:
-                        cmd.reject();
-                }
-            });
 
+            /*这里暂时没用*/
             tm.on("event",async function(event) {
                 return;
                 console.warn("ts::event",event);
