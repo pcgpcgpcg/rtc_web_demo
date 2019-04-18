@@ -13,10 +13,12 @@ import PropTypes from 'prop-types';
 
 import TransactionManager from "../lib/TransactionManager";   //'transaction-manager'
 import MediaServerClient from "../lib/MediaServerClient";
+import Background from '../img/bkgrd.jpg';
 //import TransactionManager from '../lib/transaction-manager'
 let participants;
 let pc;
 let joined=false;
+var index=0;
 let poster_addr='https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1554783370112&di=b8e3916534a569ab6c13fcc8b01e9e32&imgtype=0&src=http%3A%2F%2Fimg.17xsj.com%2Fuploads%2Fallimg%2Fc121126%2F1353910E4M0-52Kb.jpg';
 
 class MedoozeVideoRoom2 extends Component {
@@ -106,6 +108,19 @@ class MedoozeVideoRoom2 extends Component {
 
     addRemoteTrack(event){
         console.log("addRemoteTrack:"+event);
+        const track	= event.track;
+        const stream	= event.streams[0];
+        if (!stream)
+            return console.log("addRemoteTrack() no stream")
+        stream.oninactive = (event)=>console.log(event);
+        for(var i=0;i<this.remoteVideos.length;i++){
+            if(stream.id==this.remoteVideos[i].current.id){
+                return;
+            }
+        }
+        this.remoteVideos[index].current.srcObject= stream;
+        this.remoteVideos[index].current.id=stream.id;
+        index++;
     }
 
     removeRemoteTrack(event){
@@ -224,40 +239,35 @@ class MedoozeVideoRoom2 extends Component {
     render() {
         const { classes } = this.props;
         return (
-            <div style={{ padding: 20 }}>
-            <Grid container className={classes.container} spacing={8}>
-                <Grid item xs={12}>
+            <div className={classes.root}>
+            <Grid container className={classes.container} spacing={1}>
+                <Grid item xs={6}>
                     <header >
                         <h1 className="App-title">Medooze Video Room</h1>
                     </header>
                 </Grid>
-                <Grid item xs={12}>
+                <Grid item xs={6}>
                     <Button color="primary" variant="contained" onClick={this.handleStart}>
                         {this.state.bStartEchoTestButton?'stop':'start'}
                     </Button>
                 </Grid>
-                <Grid container justify="center" spacing={8}>
-                <Grid item xs={12}>
+
+                <Grid item xs={4}>
                     <video className={classes.videoLarge}
                            ref={this.localVideo}
                            id="localVideo"
                            poster={poster_addr}
                            autoPlay="true"/>
                 </Grid>
-                </Grid>
-                <Grid item xs={12}>
-                    <Grid container justify="flex-start" spacing={24}>
-                        {[0, 1, 2].map(value => (
-                            <Grid key={value} item xs={3} zeroMinWidth>
-                                <video className={classes.videoSmall}
-                                       ref={this.remoteVideos[value]}
-                                       id={value}
-                                       poster={poster_addr}
-                                       autoPlay="true"/>
-                            </Grid>
-                        ))}
-                    </Grid>
-                </Grid>
+                    {[0, 1, 2, 3, 4].map(value => (
+                        <Grid key={value} item xs={4} zeroMinWidth>
+                            <video className={classes.videoSmall}
+                                   ref={this.remoteVideos[value]}
+                                   id={value}
+                                   poster={poster_addr}
+                                   autoPlay="true"/>
+                        </Grid>
+                    ))}
             </Grid>
             </div>
         );
@@ -268,6 +278,8 @@ const styles = theme => ({
     root: {
         flexGrow: 1,
         padding: 20,
+        //backgroundImage: `url(${Background})`,
+        height: '100%',
     },
     container: {
         direction: 'row',
@@ -279,14 +291,14 @@ const styles = theme => ({
         alignItems: "center",
     },
     videoLarge: {
-        paddingTop: 5, // 16:9
-        width:'70%',
-        height:'90%',
+        paddingTop: 1, // 16:9
+        width:'98%',
+        height:'95%',
     },
     videoSmall: {
         paddingTop: 1, // 16:9
-        width:'100%',
-        height:'100%',
+        width:'98%',
+        height:'95%',
         alignItems:"flex-start",
     },
     paper: {

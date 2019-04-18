@@ -45,6 +45,7 @@ class PeerConnectionClient
 		//Forward events
 		this.pc.ontrack		= (event) => { 
 			//Store streams from event
+			console.log("ontrack",event);
 			event.transceiver.trackInfo.streams = event.streams; 
 			//Set remote ids
 			event.remoteStreamId = event.transceiver.streamId;
@@ -77,6 +78,7 @@ class PeerConnectionClient
 				{
 					//Add it for later addition
 					this.adding.add(data);
+					console.log("this.adding.add:"+data);
 					//Reneogitate
 					this.renegotiate();
 					break;
@@ -85,6 +87,7 @@ class PeerConnectionClient
 				{
 					//Add it for later removal
 					this.removing.add(data);
+					console.log("this.removing add:"+data);
 					//Renegotiate 
 					this.renegotiate();
 					break;
@@ -161,46 +164,47 @@ class PeerConnectionClient
 		//Process pending tracks to be removed
 		for (let data of this.removing)
 		{
+			console.log("this.removing:"+this.removing);
 			//Get stream and track
-			const streamInfo = this.streams[data.streamId]; 
-			const trackInfo = streamInfo.getTrack(data.trackId);
-			//Get associated mid
-			const mid = trackInfo.getMediaId();
-			//Look for the transceiver
-			for (let transceiver of this.pc.getTransceivers())
-			{
-				//If the transceiver has been processed
-				if (!transceiver.pending && transceiver.mid && transceiver.mid == mid )
-				{
-					//Deactivate transceiver
-					transceiver.direction = "inactive";
-					//Remove track
-					streamInfo.removeTrack(trackInfo);
-					//If this has no more tracks
-					if (!streamInfo.getTracks().size)
+			const streamInfo = this.streams[data.streamId];
+			if(streamInfo) {
+				const trackInfo = streamInfo.getTrack(data.trackId);
+				//Get associated mid
+				const mid = trackInfo.getMediaId();
+				//Look for the transceiver
+				for (let transceiver of this.pc.getTransceivers()) {
+					//If the transceiver has been processed
+					if (!transceiver.pending && transceiver.mid && transceiver.mid == mid) {
+						//Deactivate transceiver
+						transceiver.direction = "inactive";
+						//Remove track
+						streamInfo.removeTrack(trackInfo);
+						//If this has no more tracks
+						if (!streamInfo.getTracks().size)
 						//Delete it
-						delete (this.streams[transceiver.streamId]);
-					/*try{
-						//Launch event
-						this.ontrackended(new (RTCTrackEvent || Event)("trackended",{
-							receiver	: transceiver.receiver,
-							track		: transceiver.receiver.track,
-							streams		: trackInfo.streams,
-							transceiver	: transceiver,
-							remoteStreamId	: streamInfo.getId(),
-							remoteTrackId	: trackInfo.getId()
-						}));
-					} catch (e) {
-						console.error(e);
-					}*/
-					//Delete stuff
-					delete(transceiver.streamId);
-					delete(transceiver.trackId);
-					delete(transceiver.trackInfo);
-					//Delete from pending
-					this.removing.delete(data);
-					//Done
-					break;
+							delete (this.streams[transceiver.streamId]);
+						/*try{
+                            //Launch event
+                            this.ontrackended(new (RTCTrackEvent || Event)("trackended",{
+                                receiver	: transceiver.receiver,
+                                track		: transceiver.receiver.track,
+                                streams		: trackInfo.streams,
+                                transceiver	: transceiver,
+                                remoteStreamId	: streamInfo.getId(),
+                                remoteTrackId	: trackInfo.getId()
+                            }));
+                        } catch (e) {
+                            console.error(e);
+                        }*/
+						//Delete stuff
+						delete (transceiver.streamId);
+						delete (transceiver.trackId);
+						delete (transceiver.trackInfo);
+						//Delete from pending
+						this.removing.delete(data);
+						//Done
+						break;
+					}
 				}
 			}
 		}

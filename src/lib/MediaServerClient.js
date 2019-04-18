@@ -54,7 +54,6 @@ class MediaServerClient
 		
 		//Connect
 		//const remote = await this.ns.cmd("create",localInfo.plain());
-		console.log("Create offer:"+localInfo);
 		//join room
 		const remote=await this.ns.cmd("join",{
 			name : name,
