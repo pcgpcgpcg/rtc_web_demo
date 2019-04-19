@@ -31,15 +31,13 @@ class MedoozeVideoRoom2 extends Component {
             audioEnable:true,
             bitrateValue:100,
             bStartEchoTestButton:false,
-        }
+            videoSrcs: new Map(),
+        };
 
         // create a ref to store the video DOM element
+        this.OldvideoSrcs=new Map();
         this.localVideo = React.createRef();
-        this.remoteVideos=new Array();
-        for(var i=0;i<5;i++){
-            this.remoteVideos[i]=React.createRef();
-        }
-
+        this.remoteVideo=React.createRef();
 
         //Get our url
         this.roomId = "1234";
@@ -69,6 +67,10 @@ class MedoozeVideoRoom2 extends Component {
 
     }
 
+    componentDidUpdate(prevProps, prevState) {
+
+    }
+
     handleVideoOn(){
 
     }
@@ -85,42 +87,46 @@ class MedoozeVideoRoom2 extends Component {
         this.connect(this.url, this.roomId, this.name)
     }
 
-    addVideoForStream(stream,muted)
-    {
-        console.log("addVideoForStream");
-        this.localVideo.current.srcObject=stream;
-        //this.localVideo.current.muted=muted;
-        this.localVideo.current.id=stream.id;
-    }
-
-    removeVideoForStream(stream)
-    {
-        console.log("removeVideoForStream");
-        //Get video
-        var that=this;
-        this.localVideo.current.addEventListener('webkitTransitionEnd',function(){
-            //Delete it
-            that.localVideo.current.parentElement.removeChild(that.localVideo.current);
-        });
-        //Disable it first
-        this.localVideo.current.className = "disabled";
-    }
-
     addRemoteTrack(event){
         console.log("addRemoteTrack:"+event);
         const track	= event.track;
         const stream	= event.streams[0];
         if (!stream)
             return console.log("addRemoteTrack() no stream")
-        stream.oninactive = (event)=>console.log(event);
-        for(var i=0;i<this.remoteVideos.length;i++){
-            if(stream.id==this.remoteVideos[i].current.id){
-                return;
-            }
+        //添加到map中
+        //如果map里面已经有了这个stream,则直接返回
+        if(this.state.videoSrcs.has(stream.id)){
+            return;
         }
-        this.remoteVideos[index].current.srcObject= stream;
-        this.remoteVideos[index].current.id=stream.id;
-        index++;
+        var videoRef=React.createRef();
+        //this.OldvideoSrcs.set(stream.id,videoRef);
+        //TODO react ask for deep copy!May be new edition has better soluation
+        //var mapVideoSrcs=new Map();
+        //this.OldvideoSrcs.forEach((value,key,map)=>{
+         //   mapVideoSrcs.set(key,value);
+        //});
+
+        stream.oninactive = (event)=>console.log(event);
+
+        console.log("before set state:"+videoRef.current);
+        this.setState(function(prevState, props) {
+            prevState.videoSrcs.set(stream.id, videoRef);
+            //prevState.videoSrcs.delete('foo');
+            return {
+                videoSrcs: prevState.videoSrcs
+            }
+        },function(){
+            videoRef.current.srcObject=stream;
+            console.log("after set state:"+videoRef.current);
+        });
+
+        //this.setState({videoSrcs:mapVideoSrcs},() => {
+            //console.log("after set state:"+videoRef.current);
+            //videoRef.current.srcObject=stream;
+            //videoRef.current.id=stream.id;
+       // });
+
+
     }
 
     removeRemoteTrack(event){
@@ -259,15 +265,25 @@ class MedoozeVideoRoom2 extends Component {
                            poster={poster_addr}
                            autoPlay="true"/>
                 </Grid>
-                    {[0, 1, 2, 3, 4].map(value => (
-                        <Grid key={value} item xs={4} zeroMinWidth>
+                {[...this.state.videoSrcs].map(([key,value])=>{
+                    <Grid item xs={4} zeroMinWidth>
+                    <video className={classes.videoSmall}
+                    ref={value}
+                    id={key}
+                    poster={poster_addr}
+                    autoPlay="true"/>
+                    </Grid>})
+                }
+
+                {/* {this.state.videoSrcs.forEach((value,key,map) => (
+                        <Grid item xs={4} zeroMinWidth>
                             <video className={classes.videoSmall}
-                                   ref={this.remoteVideos[value]}
-                                   id={value}
+                                   ref={value}
+                                   id={key}
                                    poster={poster_addr}
                                    autoPlay="true"/>
                         </Grid>
-                    ))}
+                    ))}*/}
             </Grid>
             </div>
         );
