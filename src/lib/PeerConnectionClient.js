@@ -146,7 +146,6 @@ class PeerConnectionClient
 			//If not found
 			if (!stream)
 				//Create new one
-				console.log("add stream stream id:"+data.streamId);
 				this.streams[data.streamId] = stream = new StreamInfo(data.streamId);
 			//Add track info
 			stream.addTrack(trackInfo);
@@ -165,22 +164,16 @@ class PeerConnectionClient
 		//Process pending tracks to be removed
 		for (let data of this.removing)
 		{
-			console.log("this.removing size:"+this.removing.size);
 			console.log("this.removing:"+this.removing);
 			//Get stream and track
 			const streamInfo = this.streams[data.streamId];
-			console.log("data.streamId:"+data.streamId);
 			if(streamInfo) {
-				console.log("data.trackId:"+data.trackId);
 				const trackInfo = streamInfo.getTrack(data.trackId);
 				//Get associated mid
 				const mid = trackInfo.getMediaId();
 				//Look for the transceiver
 				for (let transceiver of this.pc.getTransceivers()) {
 					//If the transceiver has been processed
-					console.log("transceiver.pending:"+transceiver.pending);
-					console.log("transceiver.mid:"+transceiver.mid);
-					console.log("mid:"+mid);
 					if (!transceiver.pending && transceiver.mid && transceiver.mid == mid) {
 						//Deactivate transceiver
 						transceiver.direction = "inactive";
@@ -208,7 +201,6 @@ class PeerConnectionClient
 						delete (transceiver.trackId);
 						delete (transceiver.trackInfo);
 						//Delete from pending
-						console.log("Delete from pending");
 						this.removing.delete(data);
 						//Done
 						break;
