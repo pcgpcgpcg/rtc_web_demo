@@ -10,6 +10,15 @@ import NativeSelect from "@material-ui/core/NativeSelect";
 import { withStyles } from '@material-ui/core/styles';
 import Paper from '@material-ui/core/Paper';
 import PropTypes from 'prop-types';
+import AddIcon from '@material-ui/icons/Add';
+import MicIcon from '@material-ui/icons/Mic';
+import MicOffIcon from '@material-ui/icons/MicOff';
+import VideoCamIcon from '@material-ui/icons/Videocam'
+import VideoCamOffIcon from '@material-ui/icons/VideocamOff'
+
+import Icon from '@material-ui/core/Icon';
+import DeleteIcon from '@material-ui/icons/Delete';
+import NavigationIcon from '@material-ui/icons/Navigation';
 
 import TransactionManager from "../lib/TransactionManager";   //'transaction-manager'
 import MediaServerClient from "../lib/MediaServerClient";
@@ -18,7 +27,6 @@ import Background from '../img/bkgrd.jpg';
 let participants;
 let pc;
 let joined=false;
-var index=0;
 let poster_addr='https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1554783370112&di=b8e3916534a569ab6c13fcc8b01e9e32&imgtype=0&src=http%3A%2F%2Fimg.17xsj.com%2Fuploads%2Fallimg%2Fc121126%2F1353910E4M0-52Kb.jpg';
 
 class MedoozeVideoRoom2 extends Component {
@@ -31,11 +39,15 @@ class MedoozeVideoRoom2 extends Component {
             audioEnable:true,
             bitrateValue:100,
             bStartEchoTestButton:false,
+            fullVideoIndex:-1,
         }
 
         // create a ref to store the video DOM element
         this.localVideo = React.createRef();
+        this.remoteStreams=new Map();
         this.remoteVideos=new Array();
+        this.audioSender=null;
+        this.videoSender=null;
         for(var i=0;i<5;i++){
             this.remoteVideos[i]=React.createRef();
         }
@@ -69,8 +81,24 @@ class MedoozeVideoRoom2 extends Component {
 
     }
 
-    handleVideoOn(){
+    async handleVideoOn(){
+        this.setState({fullVideoIndex:0});
+        //this.videoSender.track.enabled = !this.videoSender.track.enabled;
+        let currentReport=await this.videoSender.getStats();
+        for (let now of currentReport.values()){
+            if (now.type != 'outbound-rtp') continue;
+                // get the corresponding stats from the baseline report
+                const remoteNow = currentReport.get(now.remoteIndex);
 
+                const packetsSent = now.packetsSent;
+            //const packetsReceived = remoteNow.packetsReceived;
+                //const packetsReceived = remoteNow.packetsReceived;
+
+                console.log("packetsSent:"+packetsSent);
+            //console.log("packetsReceived:"+packetsReceived);
+
+
+        }
     }
 
     handleAudioOn(){
@@ -85,46 +113,56 @@ class MedoozeVideoRoom2 extends Component {
         this.connect(this.url, this.roomId, this.name)
     }
 
-    addVideoForStream(stream,muted)
-    {
-        console.log("addVideoForStream");
-        this.localVideo.current.srcObject=stream;
-        //this.localVideo.current.muted=muted;
-        this.localVideo.current.id=stream.id;
-    }
-
-    removeVideoForStream(stream)
-    {
-        console.log("removeVideoForStream");
-        //Get video
-        var that=this;
-        this.localVideo.current.addEventListener('webkitTransitionEnd',function(){
-            //Delete it
-            that.localVideo.current.parentElement.removeChild(that.localVideo.current);
-        });
-        //Disable it first
-        this.localVideo.current.className = "disabled";
-    }
-
     addRemoteTrack(event){
         console.log("addRemoteTrack:"+event);
         const track	= event.track;
-        const stream	= event.streams[0];
+        const stream = event.streams[0];
         if (!stream)
             return console.log("addRemoteTrack() no stream")
-        stream.oninactive = (event)=>console.log(event);
-        for(var i=0;i<this.remoteVideos.length;i++){
-            if(stream.id==this.remoteVideos[i].current.id){
-                return;
-            }
+        //avoid two track with the same stream id
+        if(this.remoteStreams.has(stream.id)){
+            return;
         }
-        this.remoteVideos[index].current.srcObject= stream;
-        this.remoteVideos[index].current.id=stream.id;
-        index++;
+        //constrain room participant max 6
+        if(this.remoteStreams.size>6){
+            return;
+        }
+        //listen the inactive event
+        stream.oninactive = (event)=>console.log(event);
+        //add stream to remoteStreams
+        this.remoteStreams.set(stream.id,stream);
+        console.log("add stream id:"+stream.id);
+        //foreach remoteStreams render to video tags
+        let index=0;
+        for(let [key,value] of this.remoteStreams){
+            this.remoteVideos[index].current.srcObject=value;
+            this.remoteVideos[index].current.id=key;
+            index++;
+        }
     }
 
     removeRemoteTrack(event){
-        console.log("removeRemoteTrack:"+event);
+        for(let [key,value] of this.remoteStreams){
+           console.log("remote streams key:"+key);
+        }
+        console.log("remove stream id:"+event.remoteStreamId);
+        console.log("this.remoteStreams.has id?"+this.remoteStreams.has(event.remoteStreamId));
+        if(!this.remoteStreams.has(event.remoteStreamId)){
+            return;
+        }
+        let indexBeforeDel=0;
+        for(let [key,value] of this.remoteStreams){
+            this.remoteVideos[indexBeforeDel].current.srcObject=null;
+            indexBeforeDel++;
+        }
+        console.log("delete stream id:"+event.remoteStreamId);
+        this.remoteStreams.delete(event.remoteStreamId);
+        let index=0;
+        for(let [key,value] of this.remoteStreams){
+            this.remoteVideos[index].current.srcObject=value;
+            this.remoteVideos[index].current.id=key;
+            index++;
+        }
     }
 
     connect(url,roomId,name)
@@ -162,7 +200,8 @@ class MedoozeVideoRoom2 extends Component {
                      //let stream = null;
                      try {
                          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                        stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+                        //stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+                         [that.audioSender,that.videoSender] = await Promise.all([pc.addTrack(stream.getTracks()[0],stream),pc.addTrack(stream.getTracks()[1],stream)]);
 
                          //Play it
                          that.localStreamID=stream.id;
@@ -184,50 +223,7 @@ class MedoozeVideoRoom2 extends Component {
 
                 switch (event.name)
                 {
-                    case "update" :
-                        try
-                        {
-                            console.warn("update"+event.data.sdp);
 
-                            //Create new offer
-                            const offer = new RTCSessionDescription({
-                                type : 'offer',
-                                sdp  : event.data.sdp
-                            });
-
-                            //update participant list
-                            participants = event.participants;
-
-                            //Set offer
-                            await pc.setRemoteDescription(offer);
-
-                            console.log("pc::setRemoteDescription succes",offer.sdp);
-                            //此处根据participants数量来添加对应数量的transceiver
-                            for(let i=0;i<that.remoteVideos;i++){
-                                pc.addTransceiver("audio",{direction: "recvonly"});
-                                pc.addTransceiver("video",{direction: "recvonly"});
-                            }
-
-                            //Create answer
-                            const answer = await pc.createAnswer();
-
-                            console.log("pc::createAnswer succes",answer.sdp);
-
-                            //Only set it locally
-                            await pc.setLocalDescription(answer);
-
-                            console.log("pc::setLocalDescription succes",answer.sdp);
-
-                        } catch (error) {
-                            console.error("Error",error);
-                            ws.close();
-                        }
-                        break;
-                    case "participants" :
-                        //update participant list
-                        console.warn("participants"+event.participants);
-                        participants = event.participants;
-                        break;
                 }
             });
 
@@ -260,7 +256,10 @@ class MedoozeVideoRoom2 extends Component {
                            autoPlay="true"/>
                 </Grid>
                     {[0, 1, 2, 3, 4].map(value => (
-                        <Grid key={value} item xs={4} zeroMinWidth>
+                        <Grid key={value}
+                              style={{display: "block"}}
+                              item xs={(value==this.state.fullVideoIndex)?12:(this.state.fullVideoIndex<0?4:0)}
+                              zeroMinWidth>
                             <video className={classes.videoSmall}
                                    ref={this.remoteVideos[value]}
                                    id={value}
@@ -268,6 +267,23 @@ class MedoozeVideoRoom2 extends Component {
                                    autoPlay="true"/>
                         </Grid>
                     ))}
+
+                    <Grid item xs={12} justify="center">
+                        <Button variant="fab"
+                                color="primary"
+                                aria-label="Add"
+                                className={classes.button}
+                                onClick={this.handleAudioOn}>
+                            <MicIcon/>
+                        </Button>
+                        <Button variant="fab"
+                                color="secondary"
+                                aria-label="Edit"
+                                className={classes.button}
+                                onClick={this.handleVideoOn}>
+                            <VideoCamIcon/>
+                        </Button>
+                    </Grid>
             </Grid>
             </div>
         );
@@ -301,11 +317,8 @@ const styles = theme => ({
         height:'95%',
         alignItems:"flex-start",
     },
-    paper: {
-        padding: theme.spacing.unit * 2,
-        textAlign: 'center',
-        height: '1800',
-        color: theme.palette.text.secondary,
+    button: {
+        margin: theme.spacing.unit,
     },
 });
 
