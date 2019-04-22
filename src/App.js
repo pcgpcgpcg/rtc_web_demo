@@ -17,6 +17,7 @@ import NativeSelect from '@material-ui/core/NativeSelect';
 import EchoTest from './component/EchoTest'
 import PTTAudio from './component/PTTAudio'
 import MedoozeVideoRoom2 from './component/MedoozeVideoRoom2'
+import MedoozeVideoRoom3 from './component/MedoozeVideoRoom3'
 
 class App extends Component {
 

@@ -21,7 +21,7 @@ import DeleteIcon from '@material-ui/icons/Delete';
 import NavigationIcon from '@material-ui/icons/Navigation';
 
 import TransactionManager from "../lib/TransactionManager";   //'transaction-manager'
-import MediaServerClient from "../lib/MediaServerClient";
+import MediaServerClient3 from "../lib/MediaServerClient3";
 import Background from '../img/bkgrd.jpg';
 //import TransactionManager from '../lib/transaction-manager'
 let participants;
@@ -29,7 +29,7 @@ let pc;
 let joined=false;
 let poster_addr='https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1554783370112&di=b8e3916534a569ab6c13fcc8b01e9e32&imgtype=0&src=http%3A%2F%2Fimg.17xsj.com%2Fuploads%2Fallimg%2Fc121126%2F1353910E4M0-52Kb.jpg';
 
-class MedoozeVideoRoom2 extends Component {
+class MedoozeVideoRoom3 extends Component {
 
     constructor(props){
         super(props);
@@ -60,10 +60,10 @@ class MedoozeVideoRoom2 extends Component {
         this.name = myDate.toLocaleString();
         this.nopublish = false;
         //this.pc=null;
-        this.url="wss://47.94.235.90:8083";
+        this.url="ws://192.168.43.231:8000";
         this.localStreamID="";
         this.remoteIndex=-1;
-        this.destopShareMode=false;
+        this.displayId="";
 
         this.handleStart=this.handleStart.bind(this);
         this.handleVideoOn=this.handleVideoOn.bind(this);
@@ -72,9 +72,6 @@ class MedoozeVideoRoom2 extends Component {
         this.connect=this.connect.bind(this);
         this.addRemoteTrack=this.addRemoteTrack.bind(this);
         this.removeRemoteTrack=this.removeRemoteTrack.bind(this);
-        this.handleSwitchDestopShare=this.handleSwitchDestopShare.bind(this);
-        this.switchUserMedia=this.switchUserMedia.bind(this);
-        this.switchDisplayMedia=this.switchDisplayMedia.bind(this);
     }
 
     componentDidMount() {
@@ -105,16 +102,8 @@ class MedoozeVideoRoom2 extends Component {
         //}
     }
 
-    async handleAudioOn(){
-        this.audioSender.track.enabled = !this.audioSender.track.enabled;
-    }
+    handleAudioOn(){
 
-    async handleSwitchDestopShare(){
-        if(this.destopShareMode){
-            await this.switchUserMedia();
-        }else{
-            await this.switchDisplayMedia(); 
-        }
     }
 
     handleSelectChange = name => event => {
@@ -123,20 +112,6 @@ class MedoozeVideoRoom2 extends Component {
 
     handleStart(){
         this.connect(this.url, this.roomId, this.name)
-    }
-
-    async switchUserMedia(){
-        const constraints={
-            audio: true,
-            video: true
-        };
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        this.videoSender.replaceTrack(stream.getTracks()[1]);
-    }
-
-    async switchDisplayMedia(){
-        const stream = await navigator.mediaDevices.getDisplayMedia({video: true});
-        this.videoSender.replaceTrack(stream.getTracks()[0]);
     }
 
     addRemoteTrack(event){
@@ -196,12 +171,14 @@ class MedoozeVideoRoom2 extends Component {
         var that=this;
         //Connect with websocket
         //Create room url
-        const roomUrl = url +"?id="+roomId;
-        const ws = new WebSocket(roomUrl,"unified-plan");
+        //const roomUrl = url +"?id="+roomId;
+        this.displayId =Date.parse(new Date());
+        const roomUrl = url +"/channel/"+roomId+"/"+this.displayId;
+        const ws = new WebSocket(roomUrl);
         //Crete transaction manager
         const tm = new TransactionManager(ws);
         //create managed peer connection
-        const client=new MediaServerClient(tm);  
+        const client=new MediaServerClient3(tm);  
         //myPeerConnection.onicecandidate = handleICECandidateEvent;
         //myPeerConnection.onremovetrack = handleRemoveTrackEvent;
         //myPeerConnection.oniceconnectionstatechange = handleICEConnectionStateChangeEvent;
@@ -309,13 +286,6 @@ class MedoozeVideoRoom2 extends Component {
                                 onClick={this.handleVideoOn}>
                             <VideoCamIcon/>
                         </Button>
-                        <Button variant="fab"
-                                color="secondary"
-                                aria-label="Edit"
-                                className={classes.button}
-                                onClick={this.handleSwitchDestopShare}>
-                            <VideoCamIcon/>
-                        </Button>
                     </Grid>
                     </Grid>
             </Grid>
@@ -356,11 +326,11 @@ const styles = theme => ({
     },
 });
 
-MedoozeVideoRoom2.propTypes = {
+MedoozeVideoRoom3.propTypes = {
     classes: PropTypes.object.isRequired,
 };
 
-export default withStyles(styles)(MedoozeVideoRoom2);
+export default withStyles(styles)(MedoozeVideoRoom3);
 
 
 
